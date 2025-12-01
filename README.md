@@ -23,8 +23,6 @@ The work extends **PA1**, adding full shading and lighting pipeline functionalit
 
 <img src="screenshots/wireframe_vs_filled.png" width="500">
 
-<img src="screenshots/surface_closeup.png" width="500">
-
 <img src="screenshots/normals_visualization.png" width="500">
 
 <img src="screenshots/pdf_reference.png" width="600">
