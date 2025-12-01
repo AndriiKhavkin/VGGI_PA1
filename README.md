@@ -52,15 +52,15 @@ r(u,v) = \frac{a(u,v)}{\sqrt{C}}\sqrt{(C+1)(1+C\sin^2(u))}\sin(v).
 
 ## Project Structure
 
-WebGL/
-│
-├── index.html # Main HTML interface
-├── main.js # WebGL rendering and camera control
-├── model.js # Model class: U/V lines, buffers, construction
-├── shaders.js # Vertex & fragment shaders
-├── utils/
-│ └── m4.js # Matrix math library
-└── screenshots/ # Screenshots for README
+WebGL/<br />
+│<br />
+├── index.html # Main HTML interface<br />
+├── main.js # WebGL rendering and camera control<br />
+├── model.js # Model class: U/V lines, buffers, construction<br />
+├── shaders.js # Vertex & fragment shaders<br />
+├── utils/<br />
+│ └── m4.js # Matrix math library<br />
+└── screenshots/ # Screenshots for README<br />
 
 ---
 
