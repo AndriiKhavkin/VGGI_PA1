@@ -194,25 +194,16 @@ Link: https://www.youtube.com/watch?v=vpb97juPtBk
 ---
 
 ## PA2 Checklist
- Triangle mesh rendering
-
- Facet average vertex normals
-
- Gouraud shading
-
- Animated point light
-
- Ambient + Diffuse + Specular
-
- U/V sliders
-
- MVP + NormalMatrix
-
- Screenshots included
-
- Video included
-
- Branch name: PA2
+- [x] Triangle mesh rendering
+- [x] Facet average vertex normals
+- [x] Gouraud shading
+- [x] Animated point light
+- [x] Ambient + Diffuse + Specular
+- [x] U/V sliders
+- [x] MVP + NormalMatrix
+- [x] Screenshots included
+- [x] Video included
+- [x] Branch name: PA2
 
 ---
 
