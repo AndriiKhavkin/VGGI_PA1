@@ -62,9 +62,6 @@ WebGL/
 │ └── m4.js # Matrix math library
 └── screenshots/ # Screenshots for README
 
-yaml
-Копіювати код
-
 ---
 
 ## How the Wireframe is Constructed
@@ -74,16 +71,10 @@ For each fixed *u*, we sample many *v* values:
 
 uLines[i] = [x0, y0, z0, x1, y1, z1, ...];
 
-markdown
-Копіювати код
-
 ### **2. V-Polylines**
 For each fixed *v*, we sample many *u* values:
 
 vLines[j] = [x0, y0, z0, x1, y1, z1, ...];
-
-scss
-Копіювати код
 
 ### **3. Line Segment Buffers**
 All polylines are converted into WebGL-friendly line-segment lists:
@@ -101,9 +92,6 @@ Rendering uses:
 
 gl.drawArrays(gl.LINES, ...)
 
-yaml
-Копіювати код
-
 ---
 
 ## Running the Project
@@ -112,15 +100,11 @@ You can use **VS Code Live Server** or any static file server:
 
 npx http-server
 
-arduino
-Копіювати код
 
 Then open:
 
 http://localhost:5500/WebGL/
 
-yaml
-Копіювати код
 
 ---
 
