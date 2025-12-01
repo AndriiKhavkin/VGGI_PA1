@@ -46,7 +46,7 @@ r(u,v) = \frac{a(u,v)}{\sqrt{C}}\sqrt{(C+1)(1+C\sin^2(u))}\sin(v).
 \]
 
 ### Source reference  
-<img src="screenshots/pdf_reference.png" width="650">
+<img src="../screenshots/pdf_reference.png" width="650">
 
 ---
 
@@ -127,15 +127,15 @@ yaml
 ## Screenshots
 
 ### **Final Render (front view)**
-<img src="screenshots/surface_front.png" width="500">
+<img src="../screenshots/surface_front.png" width="500">
 
 ### **Final Render (angled view)**
-<img src="screenshots/surface_angle.png" width="500">
+<img src="../screenshots/surface_angle.png" width="500">
 
 
 ---
 
-## 🎥 Video Explanation (for the assignment)
+## Video Explanation (for the assignment)
 
 The accompanying 2-minute video explains:
 - how equations were implemented,
@@ -143,10 +143,11 @@ The accompanying 2-minute video explains:
 - how vertex buffers are built,
 - how the wireframe is rendered in WebGL.
 
+link: https://www.youtube.com/watch?v=6Mi5_h0dbTQ
 
 ---
 
-## ✔️ Assignment Requirements Checklist
+## Assignment Requirements Checklist
 
 - [x] Implement Model class  
 - [x] U-polylines and V-polylines data structure  
@@ -156,9 +157,8 @@ The accompanying 2-minute video explains:
 - [x] Screenshot of the result  
 - [x] 2-minute explanation video prepared  
 
-link: https://www.youtube.com/watch?v=6Mi5_h0dbTQ
 ---
 
-## 📄 Licensing
+## Licensing
 
 Educational project for KPI / VGGI course (2025).
