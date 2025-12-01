@@ -1,4 +1,4 @@
-# VGGI – Practical Assignment №1  
+# VGGI – Practical Assignment №12 
 ### **Sievert's Surface (Variant 18)**  
 **Author:** Andrii Khavkin  
 **Group:** TR-52mp  
@@ -8,140 +8,214 @@
 
 ## Overview
 
-This project implements an analytical **Sievert’s Surface** using **WebGL**.  
-The surface is rendered as a **wireframe model**, composed of **U-polylines** and **V-polylines**, as required by the assignment.
+This project implements **Gouraud shading**, dynamic lighting, facet-average normals, and adjustable mesh resolution for the analytical **Sievert’s Surface (Variant 18)** using **WebGL 1.0**.
 
-The model uses:
-- parametric equations of Sievert’s surface (C = 1),
-- WebGL shader pipeline,
-- dynamic vertex buffer construction,
-- a simple virtual trackball for rotation.
+The work extends **PA1**, adding full shading and lighting pipeline functionality.
+
 
 ---
 
-## Analytical Definition of Sievert’s Surface
+## Gallery
 
-The surface is defined parametrically as:
+<div align="center">
 
-\[
-\begin{aligned}
-x &= r(u,v)\cos \varphi(u),\\
-y &= r(u,v)\sin \varphi(u),\\
-z &= \frac{\ln(\tan(v/2)) + a(u,v)(C+1)\cos v}{\sqrt{C}},
-\end{aligned}
-\]
+<img src="screenshots/final_render.png" width="500">
 
-where:
+<img src="screenshots/wireframe_vs_filled.png" width="500">
 
-\[
-\varphi(u) = -\frac{u}{\sqrt{C+1}} + \arctan(\sqrt{C+1}\tan(u)),
-\]
+<img src="screenshots/surface_closeup.png" width="500">
 
-\[
-a(u,v) = \frac{2}{C+1 - C\sin^2(v)\cos^2(u)},
-\]
+<img src="screenshots/normals_visualization.png" width="500">
 
-\[
-r(u,v) = \frac{a(u,v)}{\sqrt{C}}\sqrt{(C+1)(1+C\sin^2(u))}\sin(v).
-\]
+<img src="screenshots/pdf_reference.png" width="600">
 
-### Source reference  
-<img src="screenshots/pdf_reference.png" width="650">
+</div>
+
+---
+
+## Assignment Requirements (PA2)
+
+This project implements all requirements of Practical Assignment №2:
+
+- Use PA1 as a starting point  
+- Render filled **triangle mesh** instead of wireframe  
+- Compute **vertex normals** using **Facet Average** method  
+- Implement **Gouraud shading** (lighting in vertex shader)  
+- Use **Ambient + Diffuse (Lambert) + Specular (Phong)** lighting components  
+- Animate a **point light** moving around the surface  
+- Provide two interactive sliders:
+  - **U segments**
+  - **V segments**
+- Dynamically rebuild mesh on slider update  
+- Render Sievert’s Surface (Variant 18)  
+- Provide screenshots & video demonstration
+
+---
+
+## Sievert Surface – Variant 18
+
+The parametric surface is defined by the following functions:
+
+φ(u) = ...
+r(u, v) = ...
+a(u, v) = ...
+z(u, v) = ...
+
+*(These formulas come from the assignment PDF; see the attached reference below.)*
+
+<div align="center">
+<img src="screenshots/pdf_reference.png" width="600">
+</div>
 
 ---
 
 ## Project Structure
 
-WebGL/<br />
-│<br />
-├── index.html # Main HTML interface<br />
-├── main.js # WebGL rendering and camera control<br />
-├── model.js # Model class: U/V lines, buffers, construction<br />
-├── shaders.js # Vertex & fragment shaders<br />
-├── utils/<br />
-│ └── m4.js # Matrix math library<br />
-└── screenshots/ # Screenshots for README<br />
+WebGL/
+│
+├── index.html # UI + canvas + sliders
+├── main.js # Rendering loop, matrices, light animation
+├── model.js # Mesh generation, normals, buffers
+├── shader.gpu # Vertex + fragment shaders
+│
+├── utils/
+│ └── m4.js # Matrix operations (MV, MVP, NormalMatrix)
+│
+└── screenshots/
+├── final_render.png
+├── wireframe_vs_filled.png
+├── surface_closeup.png
+├── normals_visualization.png
+└── pdf_reference.png
 
 ---
 
-## How the Wireframe is Constructed
+## Implementation Details
 
-### **1. U-Polylines**
-For each fixed *u*, we sample many *v* values:
+### 🔹 6.1. Triangle Mesh Generation
+- The parametric domain *(u, v)* is discretized into **U × V** segments.
+- For each grid cell, two triangles are created.
+- Index buffer stores triangle connectivity.
 
-uLines[i] = [x0, y0, z0, x1, y1, z1, ...];
+### 🔹 6.2. Vertex Normals – Facet Average
+For each triangle:
 
-### **2. V-Polylines**
-For each fixed *v*, we sample many *u* values:
+facetNormal = normalize(cross(v1 - v0, v2 - v0))
 
-vLines[j] = [x0, y0, z0, x1, y1, z1, ...];
+This normal is added to the normals of all three vertices:
 
-### **3. Line Segment Buffers**
-All polylines are converted into WebGL-friendly line-segment lists:
+vertexNormal[v0] += facetNormal
+vertexNormal[v1] += facetNormal
+vertexNormal[v2] += facetNormal
 
-[x1, y1, z1, x2, y2, z2] → one segment
+Finally, all vertex normals are normalized.
 
-markdown
-Копіювати код
+### 🔹 6.3. Gouraud Shading (Lighting in Vertex Shader)
 
-Two vertex buffers are created:
-- `uBuffer` → all U-line segments  
-- `vBuffer` → all V-line segments  
+Vertex shader computes full lighting:
 
-Rendering uses:
+color = Ambient
++ Diffuse * max(dot(N, L), 0)
++ Specular * pow(max(dot(R, V), 0), shininess)
 
-gl.drawArrays(gl.LINES, ...)
+Fragment shader simply interpolates:
+
+gl_FragColor = vColor;
+
+### 🔹 6.4. Matrices
+
+Used:
+
+- **ModelViewMatrix**
+- **NormalMatrix** — inverse transpose of MV's top-left 3×3
+- **ModelViewProjectionMatrix**
+
+These are passed to the vertex shader each frame.
+
+### 🔹 6.5. Animated Point Light
+
+Light moves along a circular trajectory around the surface:
+
+light.x = R * cos(t)
+light.y = height
+light.z = R * sin(t)
+
+This provides dynamic highlights and realistic shading.
+
+---
+
+## 🎚 Interactive Controls (Sliders)
+
+Two sliders allow adjusting the surface resolution:
+
+- **U segments**
+- **V segments**
+
+Whenever the user moves a slider:
+
+surface.uSegments = newValue
+surface.vSegments = newValue
+surface.buildMesh()
+
+The mesh is regenerated instantly and rendered with new density.
 
 ---
 
 ## Running the Project
 
-You can use **VS Code Live Server** or any static file server:
+### **Option 1 – Live Server (VS Code)**  
+Right-click `index.html` → **Open with Live Server**
 
-npx http-server
+### **Option 2 – http-server**
 
-
+```bash
+npm install -g http-server
+http-server
 Then open:
 
-http://localhost:5500/WebGL/
+http://localhost:8080
+WebGL does not allow file:// — local HTTP server is required.
 
+🎥 Video Presentation (2 minutes)
+A short video demonstrating:
 
----
+mesh generation
 
-## Screenshots
+sliders (U/V)
 
-### **Final Render (front view)**
-<img src="screenshots/surface_front.png" width="500">
+rotation with mouse
 
-### **Final Render (angled view)**
-<img src="screenshots/surface_angle.png" width="500">
+dynamic lighting
 
+shading close-ups
 
----
+👉 Insert link here:
+https://youtu.be/your-video-link
 
-## Video Explanation (for the assignment)
+✔️ PA2 Checklist
+ Triangle mesh rendering
 
-The accompanying 2-minute video explains:
-- how equations were implemented,
-- how U-polylines and V-polylines are generated,
-- how vertex buffers are built,
-- how the wireframe is rendered in WebGL.
+ Facet average vertex normals
 
-link: https://www.youtube.com/watch?v=6Mi5_h0dbTQ
+ Gouraud shading
 
----
+ Animated point light
 
-## Assignment Requirements Checklist
+ Ambient + Diffuse + Specular
 
-- [x] Implement Model class  
-- [x] U-polylines and V-polylines data structure  
-- [x] Parametric Sievert’s Surface (variant 18)  
-- [x] GPU line buffers  
-- [x] WebGL wireframe rendering  
-- [x] Screenshot of the result  
-- [x] 2-minute explanation video prepared  
+ U/V sliders
 
----
+ MVP + NormalMatrix
+
+ Screenshots included
+
+ Video included
+
+ Branch name: PA2
+
+📄 License & Author
+Author: Andrii Khavkin
+KPI — NTUU — VGGI Course — 2025
 
 ## Licensing
 

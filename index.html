@@ -19,17 +19,31 @@
 <body onload="init()">
 
 <h1>Visualization of Graphical and Geometric Information<br>
-Practical Assignment №1<br>
-Sievert's Surface – Variant 18</h1>
+Practical Assignment №2<br>
+Gouraud Shading of Sievert’s Surface – Variant 18</h1>
 
 <h3>Student: Andrii Khavkin<br>
 Group: TR-52mp<br>
 Variant: 18</h3>
 
-<p>This project renders the analytical Sievert's Surface using U and V wireframe curves.
-The model is generated parametrically in WebGL based on the surface equations.</p>
+<p>The goal of Practical Assignment №2 is to extend the geometrical model from PA1 by implementing a full WebGL shading pipeline and rendering the analytic Sievert’s Surface using Gouraud shading with dynamic lighting.</p>
+<p>All rendering is performed using WebGL 1.0, without external libraries, except matrix utilities provided in the course skeleton.</p>
 <p id="message">Drag your mouse on the cube to rotate it.<br>
 (On a touch screen, you can use your finger.)</p>
+
+<div style="margin-top: 20px; margin-bottom: 10px;">
+  <label>
+    U segments:
+    <input id="uSegments" type="range" min="5" max="120" value="40">
+    <span id="uSegmentsValue">40</span>
+  </label>
+  <br>
+  <label>
+    V segments:
+    <input id="vSegments" type="range" min="5" max="120" value="40">
+    <span id="vSegmentsValue">40</span>
+  </label>
+</div>
 
 
 <div id="canvas-holder">

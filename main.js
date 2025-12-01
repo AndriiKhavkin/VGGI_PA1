@@ -9,6 +9,14 @@ function deg2rad(angle) {
     return angle * Math.PI / 180;
 }
 
+function mat3FromMat4(m) {
+    // беремо верхній лівий 3x3 з 4x4
+    return new Float32Array([
+        m[0], m[1], m[2],
+        m[4], m[5], m[6],
+        m[8], m[9], m[10]
+    ]);
+}
 
 // Constructor from skeleton
 /*function Model(name) {
@@ -78,12 +86,21 @@ function ShaderProgram(name, program) {
     this.name = name;
     this.prog = program;
 
-    // Location of the attribute variable in the shader program.
+    // Атрибути
     this.iAttribVertex = -1;
-    // Location of the uniform specifying a color for the primitive.
-    this.iColor = -1;
-    // Location of the uniform matrix representing the combined transformation.
+    this.iAttribNormal = -1;   // NEW
+
+    // Матриці
     this.iModelViewProjectionMatrix = -1;
+    this.iModelViewMatrix          = -1;  // NEW
+    this.iNormalMatrix             = -1;  // NEW (mat3)
+
+    // Освітлення / матеріал
+    this.iLightPosition = -1;    // NEW
+    this.iAmbientColor  = -1;    // NEW
+    this.iDiffuseColor  = -1;    // NEW
+    this.iSpecularColor = -1;    // NEW
+    this.iShininess     = -1;    // NEW
 
     this.Use = function() {
         gl.useProgram(this.prog);
@@ -96,35 +113,54 @@ function ShaderProgram(name, program) {
  * way to draw with WebGL.  Here, the geometry is so simple that it doesn't matter.)
  */
 function draw() { 
-    gl.clearColor(0,0,0,1);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    
-    /* Set the values of the projection transformation */
+
+    // 1. Projection
     let projection = m4.perspective(Math.PI/8, 1, 8, 12); 
-    
-    /* Get the view matrix from the SimpleRotator object.*/
+
+    // 2. View від spaceball
     let modelView = spaceball.getViewMatrix();
 
-    // Спочатку трохи нахиляємо по X, потім повертаємо по Y
-    let rotateX = m4.xRotation(-Math.PI / 6);   // -90°
-    let rotateY = m4.yRotation(Math.PI / 6);    //  45°
+    // Додаткові повороти/зсуви, як було
+    let rotateX = m4.xRotation(-Math.PI / 6);
+    let rotateY = m4.yRotation(Math.PI / 6);
     let rotateToPointZero = m4.multiply(rotateY, rotateX);
-    let translateToPointZero = m4.translation(0,1,-10);
+    let translateToPointZero = m4.translation(0, 1, -10);
 
-    let matAccum0 = m4.multiply(rotateToPointZero, modelView );
-    let matAccum1 = m4.multiply(translateToPointZero, matAccum0 );
-        
-    /* Multiply the projection matrix times the modelview matrix to give the
-       combined transformation matrix, and send that to the shader program. */
-    let modelViewProjection = m4.multiply(projection, matAccum1 );
+    // ModelViewMatrix
+    let matAccum0 = m4.multiply(rotateToPointZero, modelView);
+    let matAccum1 = m4.multiply(translateToPointZero, matAccum0);
+    let modelViewMatrix = matAccum1;
 
-    gl.uniformMatrix4fv(shProgram.iModelViewProjectionMatrix, false, modelViewProjection );
-    
-    /* Draw the six faces of a cube, with different colors. */
-    gl.uniform4fv(shProgram.iColor, [1,1,1,1] );
-    
-    surface.draw(shProgram.iAttribVertex);
+    // 3. ModelViewProjectionMatrix
+    let modelViewProjection = m4.multiply(projection, modelViewMatrix);
+
+    // 4. NormalMatrix = inverse-transpose(upper-left 3x3 of ModelViewMatrix)
+    let invModelView = m4.inverse(modelViewMatrix);
+    let invTransModelView = m4.transpose(invModelView);
+    let normalMatrix = mat3FromMat4(invTransModelView);
+
+    // 5. Анімація точкового світла (у координатах камери)
+    let t = performance.now() * 0.001; // секунди
+    let radius = 8.0;
+    let lightX = radius * Math.cos(t);
+    let lightZ = radius * Math.sin(t);
+    let lightY = 4.0; // трохи над поверхнею
+
+    gl.uniform3fv(shProgram.iLightPosition, new Float32Array([lightX, lightY, lightZ]));
+
+    // 6. Відправляємо матриці в шейдери
+    gl.uniformMatrix4fv(shProgram.iModelViewProjectionMatrix, false, modelViewProjection);
+    gl.uniformMatrix4fv(shProgram.iModelViewMatrix,          false, modelViewMatrix);
+    gl.uniformMatrix3fv(shProgram.iNormalMatrix,             false, normalMatrix);
+
+    // 7. Малюємо поверхню (позиції + нормалі, індекси всередині Model.draw)
+    surface.draw(shProgram.iAttribVertex, shProgram.iAttribNormal);
+
+    // 8. Запит наступного кадру для анімації світла
+    requestAnimationFrame(draw);
 }
+
 
 function CreateSurfaceData()
 {
@@ -141,24 +177,45 @@ function CreateSurfaceData()
 
 /* Initialize the WebGL context. Called from init() */
 function initGL() {
-    let prog = createProgram( gl, vertexShaderSource, fragmentShaderSource );
+    let prog = createProgram(gl, vertexShaderSource, fragmentShaderSource);
 
     shProgram = new ShaderProgram('Basic', prog);
     shProgram.Use();
 
-    shProgram.iAttribVertex              = gl.getAttribLocation(prog, "vertex");
-    shProgram.iModelViewProjectionMatrix = gl.getUniformLocation(prog, "ModelViewProjectionMatrix");
-    shProgram.iColor                     = gl.getUniformLocation(prog, "color");
+    // Атрибути
+    shProgram.iAttribVertex = gl.getAttribLocation(prog, "vertex");
+    shProgram.iAttribNormal = gl.getAttribLocation(prog, "normal");
 
+    // Матриці
+    shProgram.iModelViewProjectionMatrix = gl.getUniformLocation(prog, "ModelViewProjectionMatrix");
+    shProgram.iModelViewMatrix           = gl.getUniformLocation(prog, "ModelViewMatrix");
+    shProgram.iNormalMatrix              = gl.getUniformLocation(prog, "NormalMatrix");
+
+    // Освітлення / матеріал
+    shProgram.iLightPosition = gl.getUniformLocation(prog, "uLightPosition");
+    shProgram.iAmbientColor  = gl.getUniformLocation(prog, "uAmbientColor");
+    shProgram.iDiffuseColor  = gl.getUniformLocation(prog, "uDiffuseColor");
+    shProgram.iSpecularColor = gl.getUniformLocation(prog, "uSpecularColor");
+    shProgram.iShininess     = gl.getUniformLocation(prog, "uShininess");
+
+    // Створюємо поверхню: стартові значення U/V сегментів
     surface = new Model(gl, surfaceFunc, {
         uSegments: 40,
         vSegments: 40,
         uRange: { min: -1.2, max: 1.2 },
-        vRange: { min: 0.1, max: 3.05 }
+        vRange: { min: 0.1,  max: 3.05 }
     });
 
     gl.enable(gl.DEPTH_TEST);
+    gl.clearColor(0, 0, 0, 1);
+
+    // Базові параметри матеріалу (можна міняти під себе)
+    gl.uniform3fv(shProgram.iAmbientColor,  new Float32Array([0.15, 0.15, 0.20]));
+    gl.uniform3fv(shProgram.iDiffuseColor,  new Float32Array([0.6,  0.6,  0.9]));
+    gl.uniform3fv(shProgram.iSpecularColor, new Float32Array([1.0,  1.0,  1.0]));
+    gl.uniform1f(shProgram.iShininess, 32.0);
 }
+
 
 
 /* Creates a program for use in the WebGL context gl, and returns the
@@ -201,7 +258,7 @@ function init() {
     try {
         canvas = document.getElementById("webglcanvas");
         gl = canvas.getContext("webgl");
-        if ( ! gl ) {
+        if (!gl) {
             throw "Browser does not support WebGL";
         }
     }
@@ -221,5 +278,38 @@ function init() {
 
     spaceball = new TrackballRotator(canvas, draw, 0);
 
+    // === СЛАЙДЕРИ U/V ===
+    let uSlider = document.getElementById("uSegments");
+    let vSlider = document.getElementById("vSegments");
+    let uLabel  = document.getElementById("uSegmentsValue");
+    let vLabel  = document.getElementById("vSegmentsValue");
+
+    function updateSegments() {
+        if (!surface) return;
+
+        let uSeg = parseInt(uSlider.value, 10);
+        let vSeg = parseInt(vSlider.value, 10);
+
+        surface.uSegments = uSeg;
+        surface.vSegments = vSeg;
+        surface.buildMesh(); // перегенерувати сітку
+
+        if (uLabel) uLabel.textContent = uSeg;
+        if (vLabel) vLabel.textContent = vSeg;
+    }
+
+
+    if (uSlider && vSlider) {
+        uSlider.addEventListener("input", updateSegments);
+        vSlider.addEventListener("input", updateSegments);
+
+        // стартові значення
+        updateSegments();
+    } else {
+        console.warn("uSegments / vSegments sliders not found in HTML");
+    }
+
+    // Стартова відмальовка + анімація світла
     draw();
 }
+
