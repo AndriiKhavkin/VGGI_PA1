@@ -82,7 +82,6 @@ WebGL/<br>
 └── screenshots/<br>
 ├── final_render.png<br>
 ├── wireframe_vs_filled.png<br>
-├── surface_closeup.png<br>
 ├── normals_visualization.png<br>
 └── pdf_reference.png<br>
 
