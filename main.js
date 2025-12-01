@@ -10,8 +10,8 @@ function deg2rad(angle) {
 }
 
 
-// Constructor
-function Model(name) {
+// Constructor from skeleton
+/*function Model(name) {
     this.name = name;
     this.iVertexBuffer = gl.createBuffer();
     this.count = 0;
@@ -32,6 +32,43 @@ function Model(name) {
    
         gl.drawArrays(gl.LINE_STRIP, 0, this.count);
     }
+}*/
+
+// Constructor 
+function surfaceFunc(u, v) {
+    const C = 1.0;
+    const sqrtC = Math.sqrt(C);
+    const sqrtCp1 = Math.sqrt(C + 1.0);
+
+    const sinu = Math.sin(u);
+    const cosu = Math.cos(u);
+    const sinv = Math.sin(v);
+    const cosv = Math.cos(v);
+
+    // a(u,v) = 2 / (C+1 - C sin^2(v) cos^2(u))
+    const sinv2 = sinv * sinv;
+    const cosu2 = cosu * cosu;
+    const denom = (C + 1.0 - C * sinv2 * cosu2);
+    const a = 2.0 / denom;
+
+    // φ(u) = -u / sqrt(C+1) + atan( sqrt(C+1) * tan(u) )
+    const phi = -u / sqrtCp1 + Math.atan(sqrtCp1 * Math.tan(u));
+
+    // r(u,v) = a/√C * sqrt((C+1)(1 + C sin^2(u))) * sin(v)
+    const r = (a / sqrtC) * Math.sqrt((C + 1.0) * (1.0 + C * sinu * sinu)) * sinv;
+
+    // z(u,v) = [ ln(tan(v/2)) + a(C+1)cos v ] / √C
+    let tanHalf = Math.tan(0.5 * v);
+    // захист від ln(0)
+    if (tanHalf < 1e-4) tanHalf = 1e-4;
+    const z = (Math.log(tanHalf) + a * (C + 1.0) * cosv) / sqrtC;
+
+    let x = r * Math.cos(phi);
+    let y = r * Math.sin(phi);
+
+    // Масштаб, щоб влізло в кадр
+    const scale = 0.7;
+    return [x * scale, y * scale, z * scale];
 }
 
 
@@ -68,8 +105,11 @@ function draw() {
     /* Get the view matrix from the SimpleRotator object.*/
     let modelView = spaceball.getViewMatrix();
 
-    let rotateToPointZero = m4.axisRotation([0.707,0.707,0], 0.7);
-    let translateToPointZero = m4.translation(0,0,-10);
+    // Спочатку трохи нахиляємо по X, потім повертаємо по Y
+    let rotateX = m4.xRotation(-Math.PI / 6);   // -90°
+    let rotateY = m4.yRotation(Math.PI / 6);    //  45°
+    let rotateToPointZero = m4.multiply(rotateY, rotateX);
+    let translateToPointZero = m4.translation(0,1,-10);
 
     let matAccum0 = m4.multiply(rotateToPointZero, modelView );
     let matAccum1 = m4.multiply(translateToPointZero, matAccum0 );
@@ -81,9 +121,9 @@ function draw() {
     gl.uniformMatrix4fv(shProgram.iModelViewProjectionMatrix, false, modelViewProjection );
     
     /* Draw the six faces of a cube, with different colors. */
-    gl.uniform4fv(shProgram.iColor, [1,1,0,1] );
-
-    surface.Draw();
+    gl.uniform4fv(shProgram.iColor, [1,1,1,1] );
+    
+    surface.draw(shProgram.iAttribVertex);
 }
 
 function CreateSurfaceData()
@@ -110,8 +150,12 @@ function initGL() {
     shProgram.iModelViewProjectionMatrix = gl.getUniformLocation(prog, "ModelViewProjectionMatrix");
     shProgram.iColor                     = gl.getUniformLocation(prog, "color");
 
-    surface = new Model('Surface');
-    surface.BufferData(CreateSurfaceData());
+    surface = new Model(gl, surfaceFunc, {
+        uSegments: 40,
+        vSegments: 40,
+        uRange: { min: -1.2, max: 1.2 },
+        vRange: { min: 0.1, max: 3.05 }
+    });
 
     gl.enable(gl.DEPTH_TEST);
 }
