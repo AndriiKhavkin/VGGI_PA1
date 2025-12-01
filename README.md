@@ -176,6 +176,8 @@ Then open:
 http://localhost:8080
 WebGL does not allow file:// — local HTTP server is required.
 
+```
+
 🎥 Video Presentation (2 minutes)
 A short video demonstrating:
 
