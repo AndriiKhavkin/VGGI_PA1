@@ -46,7 +46,7 @@ r(u,v) = \frac{a(u,v)}{\sqrt{C}}\sqrt{(C+1)(1+C\sin^2(u))}\sin(v).
 \]
 
 ### Source reference  
-<img src="../screenshots/pdf_reference.png" width="650">
+<img src="screenshots/pdf_reference.png" width="650">
 
 ---
 
@@ -127,10 +127,10 @@ yaml
 ## Screenshots
 
 ### **Final Render (front view)**
-<img src="../screenshots/surface_front.png" width="500">
+<img src="screenshots/surface_front.png" width="500">
 
 ### **Final Render (angled view)**
-<img src="../screenshots/surface_angle.png" width="500">
+<img src="screenshots/surface_angle.png" width="500">
 
 
 ---
