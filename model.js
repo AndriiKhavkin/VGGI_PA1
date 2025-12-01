@@ -11,7 +11,7 @@ function Model(gl, surfaceFunc, options) {
     this.uRange = options.uRange || { min: -1.0, max: 1.0 };
     this.vRange = options.vRange || { min: -1.0, max: 1.0 };
 
-    // Логічні структури (те, про що будеш розповідати у відео)
+    // Логічні структури 
     this.uLines = []; // масив поліліній уздовж u
     this.vLines = []; // масив поліліній уздовж v
 
