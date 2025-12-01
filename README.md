@@ -177,8 +177,9 @@ http://localhost:8080
 WebGL does not allow file:// — local HTTP server is required.
 
 ```
+---
 
-🎥 Video Presentation (2 minutes)
+## Video Presentation (2 minutes)
 A short video demonstrating:
 
 mesh generation
@@ -194,7 +195,9 @@ shading close-ups
 👉 Insert link here:
 https://youtu.be/your-video-link
 
-✔️ PA2 Checklist
+---
+
+## PA2 Checklist
  Triangle mesh rendering
 
  Facet average vertex normals
@@ -215,9 +218,7 @@ https://youtu.be/your-video-link
 
  Branch name: PA2
 
-📄 License & Author
-Author: Andrii Khavkin
-KPI — NTUU — VGGI Course — 2025
+---
 
 ## Licensing
 
