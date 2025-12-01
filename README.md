@@ -190,8 +190,7 @@ dynamic lighting
 
 shading close-ups
 
-👉 Insert link here:
-https://youtu.be/your-video-link
+Link: https://www.youtube.com/watch?v=vpb97juPtBk
 
 ---
 
