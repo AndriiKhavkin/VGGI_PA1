@@ -1,4 +1,4 @@
-# VGGI – Practical Assignment №12 
+# VGGI – Practical Assignment №2 
 ### **Sievert's Surface (Variant 18)**  
 **Author:** Andrii Khavkin  
 **Group:** TR-52mp  
@@ -71,22 +71,22 @@ z(u, v) = ...
 
 ## Project Structure
 
-WebGL/
-│
-├── index.html # UI + canvas + sliders
-├── main.js # Rendering loop, matrices, light animation
-├── model.js # Mesh generation, normals, buffers
-├── shader.gpu # Vertex + fragment shaders
-│
-├── utils/
-│ └── m4.js # Matrix operations (MV, MVP, NormalMatrix)
-│
-└── screenshots/
-├── final_render.png
-├── wireframe_vs_filled.png
-├── surface_closeup.png
-├── normals_visualization.png
-└── pdf_reference.png
+WebGL/<br>
+│<br>
+├── index.html # UI + canvas + sliders<br>
+├── main.js # Rendering loop, matrices, light animation<br>
+├── model.js # Mesh generation, normals, buffers<br>
+├── shader.gpu # Vertex + fragment shaders<br>
+│<br>
+├── utils/<br>
+│ └── m4.js # Matrix operations (MV, MVP, NormalMatrix)<br>
+│<br>
+└── screenshots/<br>
+├── final_render.png<br>
+├── wireframe_vs_filled.png<br>
+├── surface_closeup.png<br>
+├── normals_visualization.png<br>
+└── pdf_reference.png<br>
 
 ---
 
