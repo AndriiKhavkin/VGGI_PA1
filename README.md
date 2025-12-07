@@ -219,31 +219,31 @@ Video link:
 
 ### CT(PA3) Checklist
 
- [x] Triangle mesh rendering
+ - [x] Triangle mesh rendering
 
- [x] Facet average vertex normals (from PA2)
+ - [x] Facet average vertex normals (from PA2)
 
- [x] Tangent-space basis (TBN) per vertex
+ - [x] Tangent-space basis (TBN) per vertex
 
- [x] Gram–Schmidt with normal priority (Variant 18)
+ - [x] Gram–Schmidt with normal priority (Variant 18)
 
- [x] Diffuse texture mapping
+ - [x] Diffuse texture mapping
 
- [x] Specular mapping
+ - [x] Specular mapping
 
- [x] Normal mapping in fragment shader
+ - [x] Normal mapping in fragment shader
 
- [x] Per-pixel Phong lighting
+ - [x] Per-pixel Phong lighting
 
- [x] Animated point light source
+ - [x] Animated point light source
 
- [x] U/V sliders and dynamic mesh rebuild
+ - [x] U/V sliders and dynamic mesh rebuild
 
- [x] Screenshots prepared
+ - [x] Screenshots prepared
 
- [x] Video presentation prepared
+ - [x] Video presentation prepared
 
- [x] Git branch for CT(PA3) created
+ - [x] Git branch for CT(PA3) created
 
 ---
 
