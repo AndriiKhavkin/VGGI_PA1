@@ -179,7 +179,7 @@ let lightY = 4.0;
  - On input event, the new values are written to surface.uSegments and surface.vSegments, after which surface.buildMesh() is called.
  - The updated mesh is immediately rendered with the same textures and lighting.
 
-### Running the Project
+## Running the Project
 
 Option 1 – VS Code Live Server
 
@@ -201,6 +201,8 @@ http://localhost:8080
 
 WebGL content must be served via HTTP; direct file:// access is not allowed due to browser security restrictions.
 
+---
+
 ### Video Presentation
 
 The video (1.5–2 minutes) should demonstrate:
@@ -216,6 +218,8 @@ effect of U/V resolution sliders,
 close-ups showing sand-like relief and specular highlights.
 
 Video link: 
+
+---
 
 ### CT(PA3) Checklist
 
