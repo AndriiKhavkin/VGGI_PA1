@@ -179,6 +179,8 @@ let lightY = 4.0;
  - On input event, the new values are written to surface.uSegments and surface.vSegments, after which surface.buildMesh() is called.
  - The updated mesh is immediately rendered with the same textures and lighting.
 
+---
+
 ## Running the Project
 
 Option 1 – VS Code Live Server
@@ -203,7 +205,7 @@ WebGL content must be served via HTTP; direct file:// access is not allowed due 
 
 ---
 
-### Video Presentation
+## Video Presentation
 
 The video (1.5–2 minutes) should demonstrate:
 
@@ -221,7 +223,7 @@ Video link:
 
 ---
 
-### CT(PA3) Checklist
+## CT(PA3) Checklist
 
  - [x] Triangle mesh rendering
 
