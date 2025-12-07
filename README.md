@@ -219,7 +219,7 @@ effect of U/V resolution sliders,
 
 close-ups showing sand-like relief and specular highlights.
 
-Video link: 
+Video link: https://youtu.be/_cTZgXrRGiM
 
 ---
 
