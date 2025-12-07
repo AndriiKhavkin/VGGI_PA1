@@ -13,21 +13,22 @@
 <script src="./Utils/m4.js"></script>
 <script src="model.js"></script>
 <script src="./shader.gpu"></script>
-<script src="./main.js"></script>
+<script src="TextureHandler.js"></script>
+<script src="main.js"></script>
 
 </head>
 <body onload="init()">
 
 <h1>Visualization of Graphical and Geometric Information<br>
-Practical Assignment №2<br>
-Gouraud Shading of Sievert’s Surface – Variant 18</h1>
+Practical Assignment №3<br>
+Texture Mapping and Normal Mapping – Sievert’s Surface (Variant 18)</h1>
 
 <h3>Student: Andrii Khavkin<br>
 Group: TR-52mp<br>
 Variant: 18</h3>
 
-<p>The goal of Practical Assignment №2 is to extend the geometrical model from PA1 by implementing a full WebGL shading pipeline and rendering the analytic Sievert’s Surface using Gouraud shading with dynamic lighting.</p>
-<p>All rendering is performed using WebGL 1.0, without external libraries, except matrix utilities provided in the course skeleton.</p>
+<p>The goal of Practical Assignment №3 is to extend the shaded analytic model from PA2 by implementing texture mapping, specular mapping, and normal mapping using tangent space and the TBN basis. According to Variant 18, during Gram–Schmidt orthogonalization the normal vector has priority.</p>
+<p>The surface is shaded using a per-pixel lighting model with diffuse, specular, and normal maps, and a dynamically animated point light source. The model of Sievert’s Surface is generated analytically and rendered as a triangle mesh.</p>
 <p id="message">Drag your mouse on the cube to rotate it.<br>
 (On a touch screen, you can use your finger.)</p>
 

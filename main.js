@@ -88,19 +88,26 @@ function ShaderProgram(name, program) {
 
     // Атрибути
     this.iAttribVertex = -1;
-    this.iAttribNormal = -1;   // NEW
+    this.iAttribNormal = -1;
 
     // Матриці
     this.iModelViewProjectionMatrix = -1;
-    this.iModelViewMatrix          = -1;  // NEW
-    this.iNormalMatrix             = -1;  // NEW (mat3)
+    this.iModelViewMatrix          = -1; 
+    this.iNormalMatrix             = -1;  
 
     // Освітлення / матеріал
-    this.iLightPosition = -1;    // NEW
-    this.iAmbientColor  = -1;    // NEW
-    this.iDiffuseColor  = -1;    // NEW
-    this.iSpecularColor = -1;    // NEW
-    this.iShininess     = -1;    // NEW
+    this.iLightPosition = -1;    
+    this.iAmbientColor  = -1;    
+    this.iDiffuseColor  = -1;    
+    this.iSpecularColor = -1;    
+    this.iShininess     = -1;    
+
+    this.iAttribTexCoord = -1; // NEW
+    this.iAttribTangent  = -1; // NEW
+
+    this.iSamplerDiffuse  = -1; // NEW
+    this.iSamplerSpecular = -1; // NEW
+    this.iSamplerNormal   = -1; // NEW
 
     this.Use = function() {
         gl.useProgram(this.prog);
@@ -149,13 +156,24 @@ function draw() {
 
     gl.uniform3fv(shProgram.iLightPosition, new Float32Array([lightX, lightY, lightZ]));
 
+    // позиція ока в eye-space = (0,0,0)
+    if (shProgram.iEyePosition !== -1 && shProgram.iEyePosition != null) {
+        gl.uniform3fv(shProgram.iEyePosition, new Float32Array([0.0, 0.0, 0.0]));
+    }
+
     // 6. Відправляємо матриці в шейдери
     gl.uniformMatrix4fv(shProgram.iModelViewProjectionMatrix, false, modelViewProjection);
     gl.uniformMatrix4fv(shProgram.iModelViewMatrix,          false, modelViewMatrix);
     gl.uniformMatrix3fv(shProgram.iNormalMatrix,             false, normalMatrix);
 
     // 7. Малюємо поверхню (позиції + нормалі, індекси всередині Model.draw)
-    surface.draw(shProgram.iAttribVertex, shProgram.iAttribNormal);
+    // тут вже передаємо ВСІ атрибути
+    surface.draw(
+        shProgram.iAttribVertex,
+        shProgram.iAttribNormal,
+        shProgram.iAttribTexCoord,
+        shProgram.iAttribTangent
+    );
 
     // 8. Запит наступного кадру для анімації світла
     requestAnimationFrame(draw);
@@ -185,6 +203,8 @@ function initGL() {
     // Атрибути
     shProgram.iAttribVertex = gl.getAttribLocation(prog, "vertex");
     shProgram.iAttribNormal = gl.getAttribLocation(prog, "normal");
+    shProgram.iAttribTexCoord = gl.getAttribLocation(prog, "texCoord"); // NEW
+    shProgram.iAttribTangent  = gl.getAttribLocation(prog, "tangent"); // NEW
 
     // Матриці
     shProgram.iModelViewProjectionMatrix = gl.getUniformLocation(prog, "ModelViewProjectionMatrix");
@@ -192,11 +212,17 @@ function initGL() {
     shProgram.iNormalMatrix              = gl.getUniformLocation(prog, "NormalMatrix");
 
     // Освітлення / матеріал
-    shProgram.iLightPosition = gl.getUniformLocation(prog, "uLightPosition");
+    shProgram.iLightPosition = gl.getUniformLocation(prog, "uLightPosition"); // NEW
+    shProgram.iEyePosition    = gl.getUniformLocation(prog, "uEyePosition"); // NEW
+
     shProgram.iAmbientColor  = gl.getUniformLocation(prog, "uAmbientColor");
     shProgram.iDiffuseColor  = gl.getUniformLocation(prog, "uDiffuseColor");
     shProgram.iSpecularColor = gl.getUniformLocation(prog, "uSpecularColor");
     shProgram.iShininess     = gl.getUniformLocation(prog, "uShininess");
+
+    shProgram.iSamplerDiffuse  = gl.getUniformLocation(prog, "uSamplerDiffuse"); // NEW
+    shProgram.iSamplerSpecular = gl.getUniformLocation(prog, "uSamplerSpecular"); // NEW
+    shProgram.iSamplerNormal   = gl.getUniformLocation(prog, "uSamplerNormal"); // NEW
 
     // Створюємо поверхню: стартові значення U/V сегментів
     surface = new Model(gl, surfaceFunc, {
@@ -206,13 +232,22 @@ function initGL() {
         vRange: { min: 0.1,  max: 3.05 }
     });
 
+    surface.idTextureDiffuse  = LoadTexture("textures/diffuse.jpg"); // NEW
+    surface.idTextureSpecular = LoadTexture("textures/specular.jpg"); // NEW
+    surface.idTextureNormal   = LoadTexture("textures/normal.jpg"); // NEW
+ 
     gl.enable(gl.DEPTH_TEST);
-    gl.clearColor(0, 0, 0, 1);
+    gl.clearColor(0, 1, 1, 1.2);
+
+    // привʼязка слайсерів
+    gl.uniform1i(shProgram.iSamplerDiffuse,  0);
+    gl.uniform1i(shProgram.iSamplerSpecular, 1);
+    gl.uniform1i(shProgram.iSamplerNormal,   2);
 
     // Базові параметри матеріалу (можна міняти під себе)
     gl.uniform3fv(shProgram.iAmbientColor,  new Float32Array([0.15, 0.15, 0.20]));
-    gl.uniform3fv(shProgram.iDiffuseColor,  new Float32Array([0.6,  0.6,  0.9]));
-    gl.uniform3fv(shProgram.iSpecularColor, new Float32Array([1.0,  1.0,  1.0]));
+    gl.uniform3fv(shProgram.iDiffuseColor,  new Float32Array([1.2,  1.2,  1.2]));
+    gl.uniform3fv(shProgram.iSpecularColor, new Float32Array([1.5,  1.5,  1.5]));
     gl.uniform1f(shProgram.iShininess, 32.0);
 }
 

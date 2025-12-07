@@ -1,40 +1,42 @@
-
 // Vertex shader
 const vertexShaderSource = `
 attribute vec3 vertex;
 attribute vec3 normal;
+attribute vec3 tangent;
+attribute vec2 texCoord;
 
 uniform mat4 ModelViewProjectionMatrix;
 uniform mat4 ModelViewMatrix;
 uniform mat3 NormalMatrix;
 
-uniform vec3 uLightPosition;
-uniform vec3 uAmbientColor;
-uniform vec3 uDiffuseColor;
-uniform vec3 uSpecularColor;
-uniform float uShininess;
+uniform vec3 uLightPosition;  // позиція джерела у координатах камери
+uniform vec3 uEyePosition;    // позиція ока у координатах камери
 
-varying vec4 vColor;
+varying vec2 vTexCoord;
+varying vec3 vLightDirTS;
+varying vec3 vViewDirTS;
 
 void main() {
-    // позиція вершини в координатах камери
+    // позиція вершини в eye-space
     vec4 posEye = ModelViewMatrix * vec4(vertex, 1.0);
+
+    // нормаль і тангент в eye-space
     vec3 N = normalize(NormalMatrix * normal);
+    vec3 T = normalize(NormalMatrix * tangent);
+    vec3 B = normalize(cross(N, T));
+
+    // матриця переходу в tangent space
+    mat3 TBN = mat3(T, B, N);
+
     vec3 L = normalize(uLightPosition - posEye.xyz);
-    vec3 V = normalize(-posEye.xyz);
-    vec3 R = reflect(-L, N);
+    vec3 V = normalize(uEyePosition  - posEye.xyz);
 
-    float lambert = max(dot(N, L), 0.0);
-    float spec = 0.0;
-    if (lambert > 0.0) {
-        spec = pow(max(dot(R, V), 0.0), uShininess);
-    }
+    // напрямки світла та погляду в tangent space
+    vLightDirTS = TBN * L;
+    vViewDirTS  = TBN * V;
 
-    vec3 color = uAmbientColor +
-                 uDiffuseColor * lambert +
-                 uSpecularColor * spec;
+    vTexCoord = texCoord;
 
-    vColor = vec4(color, 1.0);
     gl_Position = ModelViewProjectionMatrix * vec4(vertex, 1.0);
 }
 `;
@@ -47,9 +49,43 @@ const fragmentShaderSource = `
    precision mediump float;
 #endif
 
-varying vec4 vColor;
+uniform vec3 uAmbientColor;
+uniform vec3 uDiffuseColor;
+uniform vec3 uSpecularColor;
+uniform float uShininess;
+
+uniform sampler2D uSamplerDiffuse;
+uniform sampler2D uSamplerSpecular;
+uniform sampler2D uSamplerNormal;
+
+varying vec2 vTexCoord;
+varying vec3 vLightDirTS;
+varying vec3 vViewDirTS;
 
 void main() {
-    gl_FragColor = vColor;
+    // normal map: RGB (0..1) -> (-1..1)
+    vec3 nTex = texture2D(uSamplerNormal, vTexCoord).xyz * 2.0 - 1.0;
+    vec3 N = normalize(nTex);
+
+    vec3 L = normalize(vLightDirTS);
+    vec3 V = normalize(vViewDirTS);
+    vec3 R = reflect(-L, N);
+
+    float lambert = max(dot(N, L), 0.0);
+    float spec = 0.0;
+    if (lambert > 0.0) {
+        spec = pow(max(dot(R, V), 0.0), uShininess);
+    }
+
+    vec3 Kd_tex = texture2D(uSamplerDiffuse, vTexCoord).rgb;
+    vec3 Ks_tex = texture2D(uSamplerSpecular, vTexCoord).rgb;
+
+    vec3 ambient  = uAmbientColor  * Kd_tex;
+    vec3 diffuse  = uDiffuseColor  * lambert * Kd_tex;
+    vec3 specular = uSpecularColor * spec    * Ks_tex;
+
+    vec3 color = ambient + diffuse + specular;
+
+    gl_FragColor = vec4(color, 1.0);
 }
 `;
