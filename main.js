@@ -5,6 +5,12 @@ let surface;                    // A surface model
 let shProgram;                  // A shader program
 let spaceball;                  // A SimpleRotator object that lets the user rotate the view by mouse.
 
+let texCenterU = 0.5;
+let texCenterV = 0.5;
+let texAngle   = 0.0;
+
+let texCenterLabel = null;  // посилання на span у HTML
+
 function deg2rad(angle) {
     return angle * Math.PI / 180;
 }
@@ -153,8 +159,11 @@ function draw() {
     let lightX = radius * Math.cos(t);
     let lightZ = radius * Math.sin(t);
     let lightY = 4.0; // трохи над поверхнею
+    texAngle = 0.5 * t;   // повільне обертання в часі
 
     gl.uniform3fv(shProgram.iLightPosition, new Float32Array([lightX, lightY, lightZ]));
+    gl.uniform2f(shProgram.iTexCenter, texCenterU, texCenterV);
+    gl.uniform1f(shProgram.iTexAngle, texAngle);
 
     // позиція ока в eye-space = (0,0,0)
     if (shProgram.iEyePosition !== -1 && shProgram.iEyePosition != null) {
@@ -200,11 +209,13 @@ function initGL() {
     shProgram = new ShaderProgram('Basic', prog);
     shProgram.Use();
 
+    document.addEventListener("keydown", handleKeyDown);
+
     // Атрибути
     shProgram.iAttribVertex = gl.getAttribLocation(prog, "vertex");
     shProgram.iAttribNormal = gl.getAttribLocation(prog, "normal");
-    shProgram.iAttribTexCoord = gl.getAttribLocation(prog, "texCoord"); // NEW
-    shProgram.iAttribTangent  = gl.getAttribLocation(prog, "tangent"); // NEW
+    shProgram.iAttribTexCoord = gl.getAttribLocation(prog, "texCoord"); 
+    shProgram.iAttribTangent  = gl.getAttribLocation(prog, "tangent"); 
 
     // Матриці
     shProgram.iModelViewProjectionMatrix = gl.getUniformLocation(prog, "ModelViewProjectionMatrix");
@@ -212,17 +223,21 @@ function initGL() {
     shProgram.iNormalMatrix              = gl.getUniformLocation(prog, "NormalMatrix");
 
     // Освітлення / матеріал
-    shProgram.iLightPosition = gl.getUniformLocation(prog, "uLightPosition"); // NEW
-    shProgram.iEyePosition    = gl.getUniformLocation(prog, "uEyePosition"); // NEW
+    shProgram.iLightPosition = gl.getUniformLocation(prog, "uLightPosition"); 
+    shProgram.iEyePosition    = gl.getUniformLocation(prog, "uEyePosition"); 
 
     shProgram.iAmbientColor  = gl.getUniformLocation(prog, "uAmbientColor");
     shProgram.iDiffuseColor  = gl.getUniformLocation(prog, "uDiffuseColor");
     shProgram.iSpecularColor = gl.getUniformLocation(prog, "uSpecularColor");
     shProgram.iShininess     = gl.getUniformLocation(prog, "uShininess");
 
-    shProgram.iSamplerDiffuse  = gl.getUniformLocation(prog, "uSamplerDiffuse"); // NEW
-    shProgram.iSamplerSpecular = gl.getUniformLocation(prog, "uSamplerSpecular"); // NEW
-    shProgram.iSamplerNormal   = gl.getUniformLocation(prog, "uSamplerNormal"); // NEW
+    shProgram.iSamplerDiffuse  = gl.getUniformLocation(prog, "uSamplerDiffuse"); 
+    shProgram.iSamplerSpecular = gl.getUniformLocation(prog, "uSamplerSpecular"); 
+    shProgram.iSamplerNormal   = gl.getUniformLocation(prog, "uSamplerNormal"); 
+
+
+    shProgram.iTexCenter = gl.getUniformLocation(prog, "uTexCenter"); // NEW
+    shProgram.iTexAngle  = gl.getUniformLocation(prog, "uTexAngle"); // NEW
 
     // Створюємо поверхню: стартові значення U/V сегментів
     surface = new Model(gl, surfaceFunc, {
@@ -244,13 +259,63 @@ function initGL() {
     gl.uniform1i(shProgram.iSamplerSpecular, 1);
     gl.uniform1i(shProgram.iSamplerNormal,   2);
 
+    // Знайти span для відображення центру текстури
+    texCenterLabel = document.getElementById("texCenterLabel");
+    if (texCenterLabel) {
+        texCenterLabel.textContent =
+            "(" + texCenterU.toFixed(2) + ", " + texCenterV.toFixed(2) + ")";
+    }
+
+    // Підписатися на клавіатуру (WASD)
+    window.addEventListener("keydown", handleKeyDown, false);
+
     // Базові параметри матеріалу (можна міняти під себе)
     gl.uniform3fv(shProgram.iAmbientColor,  new Float32Array([0.15, 0.15, 0.20]));
     gl.uniform3fv(shProgram.iDiffuseColor,  new Float32Array([1.2,  1.2,  1.2]));
     gl.uniform3fv(shProgram.iSpecularColor, new Float32Array([1.5,  1.5,  1.5]));
     gl.uniform1f(shProgram.iShininess, 32.0);
+
+    
 }
 
+
+function handleKeyDown(e) {
+    const step = 0.02; // крок у UV-просторі
+
+    switch (e.key) {
+        case "a":
+        case "A":
+            texCenterU -= step;
+            break;
+        case "d":
+        case "D":
+            texCenterU += step;
+            break;
+        case "w":
+        case "W":
+            texCenterV += step;
+            break;
+        case "s":
+        case "S":
+            texCenterV -= step;
+            break;
+        default:
+            return;
+    }
+
+    // обмежуємо в діапазоні [0,1], щоб не вилітати за текстуру
+    texCenterU = Math.max(0.0, Math.min(1.0, texCenterU));
+    texCenterV = Math.max(0.0, Math.min(1.0, texCenterV));
+
+    // оновлюємо текст на сторінці
+    if (texCenterLabel) {
+        texCenterLabel.textContent =
+            "(" + texCenterU.toFixed(2) + ", " + texCenterV.toFixed(2) + ")";
+    }
+
+    // для дебагу можна включити:
+    // console.log("texCenter:", texCenterU, texCenterV);
+}
 
 
 /* Creates a program for use in the WebGL context gl, and returns the

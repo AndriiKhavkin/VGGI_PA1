@@ -5,24 +5,32 @@
 **Course:** Visualization of Graphical and Geometric Information  
 
 ---
+## Overview
 
-This project implements **texture mapping**, **specular mapping**, and **normal mapping** for the analytical **Sievert’s Surface (Variant 18)** using **WebGL 1.0**.  
+This project extends the analytical model of Sievert’s Surface from PA3 by implementing  
+**interactive texture-coordinate transformation** in the UV plane.  
+According to the specification for even-numbered variants, the required feature is:
 
-It extends the shaded model from **PA2**:
+### ✔ **Texture Rotation (even variants)**  
+Additionally, the **texture center** can be moved interactively using keyboard input.  
 
-- keeps the analytical surface from PA1/PA2,
-- keeps the **triangle mesh** with **facet average vertex normals**,  
-- adds a **tangent-space TBN basis** and **per-pixel lighting** with normal mapping,  
-- uses a **dynamically animated point light** and interactive **U/V segment sliders**. 
+The model is shaded using a full **per-pixel PBR-style pipeline**, including:
 
-According to **Variant 18**, during **Gram–Schmidt orthogonalization** the **normal vector has priority** when constructing the tangent space.
+- diffuse (albedo) map  
+- normal map  
+- specular map  
+- dynamically animated point light  
+- TBN basis constructed using Gram–Schmidt (normal priority, Variant 18 rule)
+
+Sievert’s Surface is generated analytically and rendered as a triangle mesh.
+
 ---
 
 ## Gallery
 
 <div align="center">
 
-<img src="screenshots/final_render_CT.png" width="500">
+<img src="screenshots/final_render_CGW.png" width="500">
 
 <img src="screenshots/pdf_reference.png" width="600">
 
@@ -30,21 +38,15 @@ According to **Variant 18**, during **Gram–Schmidt orthogonalization** the **n
 
 ---
 
-## Assignment Requirements (CT)
+## Assignment Requirements (PA4)
 
-This project implements all main requirements of Practical Assignment №3:
-
-- Use the **analytic surface model from PA2** as a base.  
-- Keep **triangle mesh rendering** with facet-average vertex normals.  
-- Add **texture mapping** (diffuse texture).  
-- Add **specular map** to modulate highlight intensity.  
-- Add **normal map** in **tangent space** to create detailed surface relief.  
-- Construct the **TBN basis** (tangent, bitangent, normal) per vertex.  
-- Use **Gram–Schmidt orthogonalization** with **priority given to the normal** (Variant 18).   
-- Implement **per-pixel lighting** in the fragment shader (Phong model).   
-- Animate a **point light source** moving along a circular trajectory.   
-- Keep **interactive sliders** for **U segments** and **V segments** and rebuild the mesh on change.   
-- Use only **WebGL 1.0** and the provided matrix utilities (no external 3D engines).
+- extend the PA3 model (texture + normal + specular mapping)
+- implement interactive **UV transformation**
+- even variants → **rotate the texture around arbitrary UV center**
+- allow texture center movement using keyboard (`W`, `A`, `S`, `D`)
+- perform rotation entirely in the shader
+- update TBN-based shading accordingly
+- render the analytical Sievert Surface as a triangle mesh
 
 ---
 
@@ -66,6 +68,22 @@ In code, the parametrization is implemented in the `surfaceFunc(u, v)` function,
 </div>
 
 ---
+
+## 📐 Mathematical Background
+
+Texture rotation around a point `(u_c , v_c)` is computed as:
+
+(u', v') = R(θ) · ((u, v) – (u_c, v_c)) + (u_c, v_c)
+
+Where the rotation matrix is:
+
+R(θ) = | cosθ -sinθ | *| sinθ cosθ |
+
+
+This transformation is performed in the **vertex shader**, prior to normal mapping.
+
+---
+
 
 ## Project Structure
 
@@ -95,89 +113,57 @@ TextureHandler.js initializes each texture as a 1×1 blue pixel and then asynchr
 
 ---
 
-## Implementation Details
+## 🔧 Implementation Details
 
-### Triangle Mesh Generation
-- The parametric domain *(u, v)* is discretized into **U × V** segments.
-- For each grid point, surfaceFunc(u, v) evaluates the analytic Sievert’s Surface and writes (𝑥,𝑦,𝑧) into a position buffer.
-- Four neighbouring vertices form a quad, which is split into two triangles using an index buffer (gl.ELEMENT_ARRAY_BUFFER).
-- Changing U/V segments in the sliders triggers surface.buildMesh() and rebuilds the mesh with new resolution.
+### **1. UV Generation**
+Each vertex stores parameter-space coordinates `(u, v)` generated analytically during mesh construction.
 
-### Vertex Normals – Facet Average
-For each triangle:
+### **2. TBN Construction**
+- Tangent `T`, bitangent `B`, and normal `N` are computed per vertex.
+- Gram–Schmidt orthogonalization is applied with **normal priority** (Variant 18).
+- The resulting TBN basis transforms normal-map vectors from tangent space to world space.
 
-facetNormal = normalize(cross(v1 - v0, v2 - v0))
+### **3. Texture Rotation**
+In the vertex shader:
 
-This normal is added to the normals of all three vertices:
+`` glsl
+vec2 centered = texCoord - uTexCenter;
+float c = cos(uTexAngle);
+float s = sin(uTexAngle);
 
-vertexNormal[v0] += facetNormal
-vertexNormal[v1] += facetNormal
-vertexNormal[v2] += facetNormal
+vec2 rotated = vec2(
+    c*centered.x - s*centered.y,
+    s*centered.x + c*centered.y
+);
 
-Finally, all vertex normals are normalized.
+vTexCoord = rotated + uTexCenter; ``
 
-### Tangent Space and Gram–Schmidt (Normal Priority)
+### **4. Per-Pixel Shading**
 
-To support normal mapping, a tangent vector is computed for each vertex:
+The fragment shader applies:
 
- - For every vertex, a provisional tangent is built as the direction along increasing 𝑢 (difference between neighbouring vertices in the U direction).
+ - sampled diffuse color
+ - sampled specular intensity
+ - sampled normal perturbation via TBN
+ - ambient + diffuse + specular (Phong) lighting
+ - dynamic animated point light
 
- - The corresponding averaged normal 𝑁 is normalized.
+### Interactive Controls
+Keyboard
+Key	Action
+W	move texture center upward
+S	move texture center downward
+A	move center left
+D	move center right
 
- - According to Variant 18, priority is given to the normal in Gram–Schmidt orthogonalization:
+### Sliders
+Control	Description
+U segments	mesh resolution in u
+V segments	mesh resolution in v
 
-const dotNT = dot(N, T);
-T = T - dotNT * N;  // project out normal component
-T = normalize(T);
+The current texture center is displayed on the page:
 
- - B (bitangent) is reconstructed in the vertex shader as B = cross(N, T).
- - The TBN matrix:
-
- #### TBN = [ 𝑇,𝐵,𝑁 ]
-
-is used to transform light and view directions into tangent space.
-
-### Texture Mapping and Normal Mapping
-
- - Each vertex additionally stores texture coordinates (u, v) in [0,1] × [0,1].
- - In the fragment shader:
-
-vec3 Kd_tex = texture2D(uSamplerDiffuse, vTexCoord).rgb;
-vec3 Ks_tex = texture2D(uSamplerSpecular, vTexCoord).rgb;
-vec3 nTex   = texture2D(uSamplerNormal,  vTexCoord).xyz * 2.0 - 1.0;
-
- - The normal map is converted from [0,1] RGB into [−1,1] tangent-space vector and normalized.
- - This perturbed normal is used in the Phong lighting model, resulting in detailed sand-like relief even on a relatively coarse triangle mesh.
-
-### Per-Pixel Lighting (Fragment Shader)
-
-Lighting is computed per fragment (per-pixel) in the fragment shader using the Phong model:
-
-color = 𝐾𝑎 ⋅ ambient + 𝐾𝑑 ⋅ max⁡(0,𝑁 ⋅ 𝐿) + 𝐾𝑠 ⋅ max(0,𝑅 ⋅ 𝑉)shininess
-
- - Ambient uses diffuse texture color to softly illuminate the whole surface.
- - Diffuse (Lambert) uses the normal-mapped 𝑁 and light direction 𝐿 in tangent space.
- - Specular (Phong) uses the reflection vector 𝑅, view direction 𝑉, and specular map to control highlight intensity.
-
-Light and eye positions are passed in view space (uLightPosition, uEyePosition), transformed to tangent space using TBN in the vertex shader, and interpolated across the triangle.
-
-### Animated Point Light
-
- - The point light moves on a circular orbit around the surface:
-
-let t = performance.now() * 0.001;
-let radius = 8.0;
-let lightX = radius * Math.cos(t);
-let lightZ = radius * Math.sin(t);
-let lightY = 4.0;
-
- - The moving light highlights the details produced by the normal map and clearly shows the effect of tangent-space perturbations when the model rotates.
-
-### Interactive U/V Sliders
-
- - HTML <input type="range"> elements control the number of segments along U and V.
- - On input event, the new values are written to surface.uSegments and surface.vSegments, after which surface.buildMesh() is called.
- - The updated mesh is immediately rendered with the same textures and lighting.
+Texture center (u, v): (0.50, 0.50)
 
 ---
 
@@ -219,37 +205,29 @@ effect of U/V resolution sliders,
 
 close-ups showing sand-like relief and specular highlights.
 
-Video link: https://youtu.be/_cTZgXrRGiM
+Video link: https://youtu.be/e4_h7TrfRvM
 
 ---
 
 ## CT(PA3) Checklist
 
- - [x] Triangle mesh rendering
+ - [x] Texture-space rotation
 
- - [x] Facet average vertex normals (from PA2)
+ - [x] Center translation via keyboard
 
- - [x] Tangent-space basis (TBN) per vertex
+ - [x] Per-pixel shading
 
- - [x] Gram–Schmidt with normal priority (Variant 18)
+ - [x] Normal + specular + diffuse maps
 
- - [x] Diffuse texture mapping
+ - [x] Analytical Sievert Surface
 
- - [x] Specular mapping
+ - [x] TBN with Gram–Schmidt (normal priority)
 
- - [x] Normal mapping in fragment shader
+ - [x] Animated point light
 
- - [x] Per-pixel Phong lighting
+ - [x] UV transformation in vertex shader
 
- - [x] Animated point light source
-
- - [x] U/V sliders and dynamic mesh rebuild
-
- - [x] Screenshots prepared
-
- - [x] Video presentation prepared
-
- - [x] Git branch for CT(PA3) created
+ - [x] Screenshots added
 
 ---
 

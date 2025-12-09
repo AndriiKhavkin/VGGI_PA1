@@ -9,37 +9,51 @@ uniform mat4 ModelViewProjectionMatrix;
 uniform mat4 ModelViewMatrix;
 uniform mat3 NormalMatrix;
 
-uniform vec3 uLightPosition;  // позиція джерела у координатах камери
-uniform vec3 uEyePosition;    // позиція ока у координатах камери
+uniform vec3 uLightPosition;
+uniform vec3 uEyePosition;
+
+// НОВІ uniform'и для обертання текстурних координат
+uniform vec2  uTexCenter;
+uniform float uTexAngle;
 
 varying vec2 vTexCoord;
 varying vec3 vLightDirTS;
 varying vec3 vViewDirTS;
 
 void main() {
-    // позиція вершини в eye-space
+
+    // позиція в координатах камери
     vec4 posEye = ModelViewMatrix * vec4(vertex, 1.0);
 
-    // нормаль і тангент в eye-space
+    // нормаль і тангент у eye-space
     vec3 N = normalize(NormalMatrix * normal);
     vec3 T = normalize(NormalMatrix * tangent);
     vec3 B = normalize(cross(N, T));
-
-    // матриця переходу в tangent space
     mat3 TBN = mat3(T, B, N);
 
-    vec3 L = normalize(uLightPosition - posEye.xyz);
-    vec3 V = normalize(uEyePosition  - posEye.xyz);
+    // напрямок світла і погляду в tangent space
+    vec3 L = TBN * (uLightPosition - posEye.xyz);
+    vec3 V = TBN * (uEyePosition   - posEye.xyz);
+    vLightDirTS = normalize(L);
+    vViewDirTS  = normalize(V);
 
-    // напрямки світла та погляду в tangent space
-    vLightDirTS = TBN * L;
-    vViewDirTS  = TBN * V;
+    // ОБЕРТАННЯ ТЕКСТУРНИХ КООРДИНАТ НАВКОЛО uTexCenter
+    vec2 tc = texCoord;
+    vec2 centered = tc - uTexCenter;
 
-    vTexCoord = texCoord;
+    float c = cos(uTexAngle);
+    float s = sin(uTexAngle);
 
+    vec2 rotated = vec2(
+        c * centered.x - s * centered.y,
+        s * centered.x + c * centered.y
+    );
+
+    vTexCoord = rotated + uTexCenter;
+
+    // позиція вершини на екрані
     gl_Position = ModelViewProjectionMatrix * vec4(vertex, 1.0);
-}
-`;
+}`;
 
 // Fragment shader
 const fragmentShaderSource = `
@@ -61,6 +75,10 @@ uniform sampler2D uSamplerNormal;
 varying vec2 vTexCoord;
 varying vec3 vLightDirTS;
 varying vec3 vViewDirTS;
+
+//new
+uniform vec2 uTexCenter;   // центр обертання в (u,v)
+uniform float uTexAngle;   // кут обертання в радіанах
 
 void main() {
     // normal map: RGB (0..1) -> (-1..1)
