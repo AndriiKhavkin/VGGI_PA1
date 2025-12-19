@@ -1,33 +1,182 @@
 <!DOCTYPE html>
-<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-
-
-<title>PA#4</title>
-<style>
-    body {
-        background-color: #EEEEEE;
-    }
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>PA#4</title>
+  <style>
+:root{
+  --bg:#0b0c0f;
+  --panel:#101219;
+  --text:#f2f2f2;
+  --muted:#b7bcc7;
+  --line:#2b2f3a;
+  --shadow: rgba(0,0,0,0.45);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Liberation Sans", sans-serif;
+  background: radial-gradient(1200px 700px at 20% 10%, #1a1f2b 0%, var(--bg) 55%) fixed;
+  color:var(--text);
+  line-height:1.6;
+}
+.container{
+  max-width: 1150px;
+  margin: 0 auto;
+  padding: 28px 18px 44px;
+}
+.header{
+  border:1px solid var(--line);
+  background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
+  border-radius: 18px;
+  padding: 18px 18px 16px;
+  box-shadow: 0 14px 40px var(--shadow);
+}
+h1{
+  margin:0;
+  font-size: 20px;
+  font-weight: 780;
+  letter-spacing: 0.2px;
+}
+h3{
+  margin: 10px 0 0;
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--muted);
+}
+p,li{color:var(--muted)}
+pre{
+  border:1px solid var(--line);
+  background: rgba(0,0,0,0.35);
+  padding: 12px;
+  border-radius: 14px;
+  overflow:auto;
+  color: var(--text);
+}
+.grid{
+  display:grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 16px;
+  margin-top: 16px;
+}
+@media (max-width: 920px){
+  .grid{grid-template-columns:1fr}
+}
+.card{
+  border:1px solid var(--line);
+  background: rgba(16,18,25,0.72);
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: 0 14px 40px var(--shadow);
+}
+.badge{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top: 10px;
+}
+.kbd{
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+  border:1px solid var(--line);
+  background: rgba(0,0,0,0.35);
+  padding: 2px 8px;
+  border-radius: 9px;
+  color: var(--text);
+}
+a{color:var(--text)}
+#canvas-holder{display:flex; justify-content:center; margin-top:10px}
+.canvas-wrap{
+  position:relative;
+  display:inline-block;
+  border-radius: 18px;
+  overflow:hidden;
+  border:1px solid var(--line);
+  background:#05060a;
+}
+#webglcanvas{display:block; background:#05060a;}
+#texCenterMarker{
+  position:absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 2px solid rgba(245,245,245,0.95);
+  background: rgba(245,245,245,0.12);
+  box-shadow: 0 0 0 6px rgba(245,245,245,0.07);
+  transform: translate(-50%, -50%);
+  pointer-events:none;
+}
+#texCenterMarker::before{
+  content:"";
+  position:absolute;
+  left:50%;
+  top:50%;
+  width: 2px;
+  height: 22px;
+  background: rgba(245,245,245,0.65);
+  transform: translate(-50%,-50%);
+}
+#texCenterMarker::after{
+  content:"";
+  position:absolute;
+  left:50%;
+  top:50%;
+  width: 22px;
+  height: 2px;
+  background: rgba(245,245,245,0.65);
+  transform: translate(-50%,-50%);
+}
+input[type="range"]{accent-color:#d9d9d9}
+#uvMarker{
+  position:absolute;
+  width:14px;height:14px;
+  transform:translate(-50%,-50%);
+  pointer-events:none;
+  border:1px solid #fff;
+  border-radius:50%;
+  box-shadow:0 0 0 2px rgba(0,0,0,.65);
+}
+#uvMarker::before,#uvMarker::after{
+  content:"";
+  position:absolute;
+  left:50%;top:50%;
+  background:#fff;
+  transform:translate(-50%,-50%);
+}
+#uvMarker::before{ width:14px;height:1px; }
+#uvMarker::after { width:1px;height:14px; }
 </style>
 
-<script src="./Utils/trackball-rotator.js"></script>
-<script src="./Utils/m4.js"></script>
-<script src="model.js"></script>
-<script src="./shader.gpu"></script>
-<script src="TextureHandler.js"></script>
-<script src="main.js"></script>
-
+  <script src="./Utils/trackball-rotator.js"></script>
+  <script src="./Utils/m4.js"></script>
+  <script src="model.js"></script>
+  <script src="./shader.gpu"></script>
+  <script src="TextureHandler.js"></script>
+  <script src="main.js"></script>
 </head>
+
 <body onload="init()">
-
-<h1>Visualization of Graphical and Geometric Information<br>
+  <div class="container">
+    
+<div class="header">
+  <h1>Visualization of Graphical and Geometric Information<br>
 Calculation and graphics work (Practical Assignment №4)<br>
-Texture Rotation and Translation – Sievert’s Surface (Variant 18)</h1>
-
-<h3>Student: Andrii Khavkin<br>
+Texture Rotation and Translation – Sievert’s Surface (Variant 20)</h1>
+  <h3>Student: Andrii Khavkin<br>
 Group: TR-52mp<br>
 Variant: 18</h3>
+  <div class="badge">
+    <span class="kbd">Noir UI</span>
+    <span class="kbd">Mouse drag: rotate</span>
+    <span class="kbd">W/A/S/D: move (u,v)</span>
+  </div>
+</div>
 
-<p>
+
+    <div class="grid">
+      <div class="card">
+        <p>
 The goal of Practical Assignment №4 is to extend the textured and normal-mapped analytical model 
 from PA3 by implementing interactive transformation of texture coordinates in the <b>uv</b>-plane.
 According to the task, even-numbered variants must implement <b>texture rotation</b>.
@@ -60,8 +209,10 @@ lighting across all texture channels.
 
 <p id="message">Drag your mouse on the cube to rotate it.<br>
 (On a touch screen, you can use your finger.)</p>
+      </div>
 
-<h3>Interactive Controls</h3>
+      <div class="card">
+        <h3>Interactive Controls</h3>
 <ul>
   <li><b>U segments</b> — resolution along parameter u</li>
   <li><b>V segments</b> — resolution along parameter v</li>
@@ -95,9 +246,12 @@ and the integration of animated UV rotations into a per-pixel shaded analytical 
 
 
 
-<div id="canvas-holder">
-   <canvas width="600" height="600" id="webglcanvas" style="background-color:red"></canvas>
+<div class="canvas-wrap">
+  <canvas width="690" height="690" id="webglcanvas"></canvas>
+  <div id="texCenterMarker" aria-label="Texture center marker"></div>
 </div>
+  
 
-
-</body></html>
+  <script src="./ui.js"></script>
+</body>
+</html>
