@@ -1,4 +1,4 @@
-# VGGI – CONTROL TASK (Practical Assignment №3) 
+# VGGI – CONTROL TASK (Practical Assignment №4) 
 ###  **Texture Mapping and Normal Mapping – Sievert’s Surface (Variant 18)**    
 **Author:** Andrii Khavkin  
 **Group:** TR-52mp  
