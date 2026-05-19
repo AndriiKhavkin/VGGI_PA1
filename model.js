@@ -60,6 +60,7 @@ Model.prototype.buildMesh = function () {
 
     // ==== 2) індекси трикутників ====
     const indices = [];
+    const wireIndices = [];
     const rowSize = uSeg + 1;
 
     for (let j = 0; j < vSeg; j++) {
@@ -71,10 +72,14 @@ Model.prototype.buildMesh = function () {
 
             indices.push(i0, i2, i1);
             indices.push(i1, i2, i3);
+            // wireframe edges
+            wireIndices.push(i0, i2, i2, i1, i1, i0);
+            wireIndices.push(i1, i2, i2, i3, i3, i1);
         }
     }
 
     this.indexCount = indices.length;
+    this.wireIndexCount = wireIndices.length;
 
     // ==== 3) Facet average нормалі ====
     const normals = new Array(positions.length).fill(0);
@@ -169,6 +174,7 @@ Model.prototype.buildMesh = function () {
     if (!this.indexBuffer)    this.indexBuffer    = gl.createBuffer();
     if (!this.texcoordBuffer) this.texcoordBuffer = gl.createBuffer();
     if (!this.tangentBuffer)  this.tangentBuffer  = gl.createBuffer();
+    if (!this.wireIndexBuffer) this.wireIndexBuffer = gl.createBuffer();
 
     gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
@@ -182,6 +188,9 @@ Model.prototype.buildMesh = function () {
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
 
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.wireIndexBuffer);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(wireIndices), gl.STATIC_DRAW);
+
     gl.bindBuffer(gl.ARRAY_BUFFER, this.tangentBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, tangents, gl.STATIC_DRAW);
 
@@ -191,38 +200,34 @@ Model.prototype.buildMesh = function () {
 
 
 // виклик малювання
+// виклик малювання filled surface
 Model.prototype.draw = function (posLoc, normLoc, texLoc, tanLoc) {
     const gl = this.gl;
 
-    // positions
-    if (posLoc !== undefined) {
+    if (posLoc !== undefined && posLoc !== -1) {
         gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
         gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
         gl.enableVertexAttribArray(posLoc);
     }
 
-    // normals
-    if (normLoc !== undefined) {
+    if (normLoc !== undefined && normLoc !== -1) {
         gl.bindBuffer(gl.ARRAY_BUFFER, this.normalBuffer);
         gl.vertexAttribPointer(normLoc, 3, gl.FLOAT, false, 0, 0);
         gl.enableVertexAttribArray(normLoc);
     }
 
-    // texcoords
-    if (texLoc !== undefined) {
+    if (texLoc !== undefined && texLoc !== -1) {
         gl.bindBuffer(gl.ARRAY_BUFFER, this.texcoordBuffer);
         gl.vertexAttribPointer(texLoc, 2, gl.FLOAT, false, 0, 0);
         gl.enableVertexAttribArray(texLoc);
     }
 
-    // tangents
-    if (tanLoc !== undefined) {
+    if (tanLoc !== undefined && tanLoc !== -1) {
         gl.bindBuffer(gl.ARRAY_BUFFER, this.tangentBuffer);
         gl.vertexAttribPointer(tanLoc, 3, gl.FLOAT, false, 0, 0);
         gl.enableVertexAttribArray(tanLoc);
     }
 
-    // --- TEXTURES ---
     if (this.idTextureDiffuse) {
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, this.idTextureDiffuse);
@@ -238,6 +243,24 @@ Model.prototype.draw = function (posLoc, normLoc, texLoc, tanLoc) {
 
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
     gl.drawElements(gl.TRIANGLES, this.indexCount, gl.UNSIGNED_SHORT, 0);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, null);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+};
+
+
+// окреме малювання wireframe
+Model.prototype.drawWireframe = function (posLoc) {
+    const gl = this.gl;
+
+    if (posLoc !== undefined && posLoc !== -1) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
+        gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(posLoc);
+    }
+
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.wireIndexBuffer);
+    gl.drawElements(gl.LINES, this.wireIndexCount, gl.UNSIGNED_SHORT, 0);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);

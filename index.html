@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>PA#4</title>
+  <title>PA#1 WebGL Stereo Camera</title>
   <style>
 :root{
   --bg:#0b0c0f;
@@ -22,43 +22,44 @@ body{
   line-height:1.6;
 }
 .container{
-  max-width: 1150px;
+  max-width: 1280px;
   margin: 0 auto;
-  padding: 28px 18px 44px;
+  padding: 8px 12px 18px;
 }
 .header{
   border:1px solid var(--line);
-  background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
-  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0t.03));
+  padding: 10px 14px;
   padding: 18px 18px 16px;
   box-shadow: 0 14px 40px var(--shadow);
 }
 h1{
   margin:0;
-  font-size: 20px;
+  font-size: 15px;
   font-weight: 780;
   letter-spacing: 0.2px;
 }
 h3{
   margin: 10px 0 0;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 650;
   color: var(--muted);
 }
 p,li{color:var(--muted)}
 pre{
-  border:1px solid var(--line);
+  border:1px solid var(--muted);
   background: rgba(0,0,0,0.35);
-  padding: 12px;
+  padding: 14px;
   border-radius: 14px;
   overflow:auto;
   color: var(--text);
+  font-size: 13px;
 }
 .grid{
   display:grid;
-  grid-template-columns: 1.1fr 0.9fr;
-  gap: 16px;
-  margin-top: 16px;
+  grid-template-columns: 0.48fr 1.52fr;
+  gap: 12px;
+  margin-top: 10px;
 }
 @media (max-width: 920px){
   .grid{grid-template-columns:1fr}
@@ -67,7 +68,7 @@ pre{
   border:1px solid var(--line);
   background: rgba(16,18,25,0.72);
   border-radius: 18px;
-  padding: 16px;
+  padding: 12px;
   box-shadow: 0 14px 40px var(--shadow);
 }
 .badge{
@@ -160,16 +161,17 @@ input[type="range"]{accent-color:#d9d9d9}
   <div class="container">
     
 <div class="header">
-  <h1>Visualization of Graphical and Geometric Information<br>
-Calculation and graphics work (Practical Assignment №4)<br>
-Texture Rotation and Translation – Sievert’s Surface (Variant 20)</h1>
+  <h1>Methods of Synthesis of Virtual Reality<br>
+Practical Assignment №1<br>
+WebGL Stereo Camera and Anaglyph Rendering</h1>
   <h3>Student: Andrii Khavkin<br>
 Group: TR-52mp<br>
 Variant: 18</h3>
   <div class="badge">
-    <span class="kbd">Noir UI</span>
-    <span class="kbd">Mouse drag: rotate</span>
-    <span class="kbd">W/A/S/D: move (u,v)</span>
+    <span class="kbd">Mouse drag: rotate model</span>
+    <span class="kbd">T: stereo on/off</span>
+    <span class="kbd">Anaglyph red/cyan</span>
+    <span class="kbd">Wireframe over filled polygons</span>
   </div>
 </div>
 
@@ -177,18 +179,40 @@ Variant: 18</h3>
     <div class="grid">
       <div class="card">
         <p>
-The goal of Practical Assignment №4 is to extend the textured and normal-mapped analytical model 
-from PA3 by implementing interactive transformation of texture coordinates in the <b>uv</b>-plane.
-According to the task, even-numbered variants must implement <b>texture rotation</b>.
-In addition to rotation, the texture center is translated interactively using keyboard input.
+The goal of Practical Assignment №1 is to implement a WebGL-based stereo camera system
+for rendering an analytical surface as an anaglyphic stereo image. The work is based on
+the surface model developed in the previous discipline “Visualization of Graphical and
+Geometric Information”.
 </p>
 
 <p>
-The surface is shaded using a per-pixel lighting model with diffuse, specular, and normal maps.
-Sievert’s Surface is generated analytically from its parametric definition and rendered as a 
-triangle mesh. Rotated texture coordinates are computed in the vertex shader using the 
-center point <i>(u<sub>c</sub>, v<sub>c</sub>)</i> and rotation angle <i>θ</i>, forming:
+The application renders the model in negative parallax using two shifted camera frustums:
+one for the left eye and one for the right eye. The left-eye image is written to the red
+channel, while the right-eye image is written to the green and blue channels, forming a
+red-cyan anaglyph image.
 </p>
+
+<p>
+The model is displayed as a textured and normal-mapped analytical surface with a wireframe
+mesh rendered on top of filled polygons. This makes it possible to observe both the shaded
+surface and the underlying polygonal structure of the generated parametric mesh.
+</p>
+
+<p>
+The stereo camera parameters can be changed interactively:
+<br><b>Eye separation</b> controls the distance between virtual eyes;
+<br><b>Convergence</b> defines the zero-parallax distance;
+<br><b>FOV</b> changes the field of view angle;
+<br><b>Near clip</b> changes the near clipping plane.
+</p>
+
+<p>
+The model can be rotated around its center using the mouse. The implementation also
+prepares the rendering pipeline for displaying a webcam stream in the zero-parallax plane,
+which is required for combining real camera input with the stereo-rendered scene.
+</p>
+
+<p id="message">Drag the mouse over the canvas to rotate the model.</p>
 
 <pre>
 (u', v') = R(θ) · ((u, v) − (u<sub>c</sub>, v<sub>c</sub>)) + (u<sub>c</sub>, v<sub>c</sub>)
@@ -216,12 +240,18 @@ lighting across all texture channels.
 <ul>
   <li><b>U segments</b> — resolution along parameter u</li>
   <li><b>V segments</b> — resolution along parameter v</li>
-  <li><b>W, A, S, D</b> — move the texture center</li>
+  <li><b>Mouse drag</b> — rotate the model around its center</li>
+  <li><b>T</b> — toggle stereo anaglyph / mono rendering</li>
+  <li><b>Eye separation</b> — distance between the virtual cameras</li>
+  <li><b>Convergence</b> — zero-parallax distance</li>
+  <li><b>FOV</b> — vertical field of view angle</li>
+  <li><b>Near clip</b> — near clipping plane distance</li>
 </ul>
 
 <p>
-This assignment demonstrates the correct application of texture-space transformations 
-and the integration of animated UV rotations into a per-pixel shaded analytical surface model.
+This assignment demonstrates an off-axis stereo camera implementation in WebGL.
+The scene is rendered twice with different projection matrices and color masks,
+producing a red-cyan anaglyph image.
 </p>
 
 <div style="margin-top: 20px; margin-bottom: 10px;">
@@ -238,16 +268,42 @@ and the integration of animated UV rotations into a per-pixel shaded analytical 
   </label>
 </div>
 
+<div style="margin-top: 20px; margin-bottom: 10px;">
+  <label>
+    Eye separation:
+    <input id="eyeSeparation" type="range" min="0.01" max="1.00" step="0.01" value="0.20">
+    <span id="eyeSeparationValue">0.20</span>
+  </label>
+  <br>
+  <label>
+    Convergence:
+    <input id="convergence" type="range" min="1.0" max="20.0" step="0.1" value="8.0">
+    <span id="convergenceValue">8.0</span>
+  </label>
+  <br>
+  <label>
+    FOV:
+    <input id="fov" type="range" min="20" max="90" step="1" value="45">
+    <span id="fovValue">45</span>
+  </label>
+  <br>
+  <label>
+    Near clip:
+    <input id="nearClip" type="range" min="0.05" max="5.0" step="0.05" value="0.10">
+    <span id="nearClipValue">0.10</span>
+  </label>
+</div>
+
 
 <p>
-  Texture center (u, v):
-  <span id="texCenterLabel">(0.50, 0.50)</span>
+  Stereo mode:
+  <span id="stereoModeLabel">Anaglyph enabled</span>
 </p>
 
 
 
 <div class="canvas-wrap">
-  <canvas width="690" height="690" id="webglcanvas"></canvas>
+  <canvas width="640" height="640" id="webglcanvas"></canvas>
   <div id="texCenterMarker" aria-label="Texture center marker"></div>
 </div>
   

@@ -11,6 +11,20 @@ let texAngle   = 0.0;
 
 let texCenterLabel = null;  // посилання на span у HTML
 
+let stereoCamera = null; // додавання stereo-параметрів
+
+let stereoParams = {
+    convergence: 7.0,
+    eyeSeparation: 0.28,
+    fov: 45.0,
+    nearClip: 0.1,
+    farClip: 100.0
+};
+
+let anaglyphEnabled = true;
+
+let wireProgram = null; // MSVR #1
+
 function deg2rad(angle) {
     return angle * Math.PI / 180;
 }
@@ -120,71 +134,130 @@ function ShaderProgram(name, program) {
     }
 }
 
-
-/* Draws a colored cube, along with a set of coordinate axes.
- * (Note that the use of the above drawPrimitive function is not an efficient
- * way to draw with WebGL.  Here, the geometry is so simple that it doesn't matter.)
- */
-function draw() { 
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-    // 1. Projection
-    let projection = m4.perspective(Math.PI/8, 1, 8, 12); 
-
-    // 2. View від spaceball
+function getBaseViewMatrix() {
     let modelView = spaceball.getViewMatrix();
 
-    // Додаткові повороти/зсуви, як було
     let rotateX = m4.xRotation(-Math.PI / 6);
     let rotateY = m4.yRotation(Math.PI / 6);
     let rotateToPointZero = m4.multiply(rotateY, rotateX);
-    let translateToPointZero = m4.translation(0, 1, -10);
+    let translateToPointZero = m4.translation(0, 0.6, -4.2);
 
-    // ModelViewMatrix
     let matAccum0 = m4.multiply(rotateToPointZero, modelView);
     let matAccum1 = m4.multiply(translateToPointZero, matAccum0);
-    let modelViewMatrix = matAccum1;
 
-    // 3. ModelViewProjectionMatrix
-    let modelViewProjection = m4.multiply(projection, modelViewMatrix);
+    return matAccum1;
+}
 
-    // 4. NormalMatrix = inverse-transpose(upper-left 3x3 of ModelViewMatrix)
+
+function drawSceneWithMatrices(projectionMatrix, modelViewMatrix) {
+    let modelViewProjection = m4.multiply(projectionMatrix, modelViewMatrix);
+
     let invModelView = m4.inverse(modelViewMatrix);
     let invTransModelView = m4.transpose(invModelView);
     let normalMatrix = mat3FromMat4(invTransModelView);
 
-    // 5. Анімація точкового світла (у координатах камери)
-    let t = performance.now() * 0.001; // секунди
+    let t = performance.now() * 0.001;
     let radius = 8.0;
     let lightX = radius * Math.cos(t);
     let lightZ = radius * Math.sin(t);
-    let lightY = 4.0; // трохи над поверхнею
-    texAngle = 0.5 * t;   // повільне обертання в часі
+    let lightY = 4.0;
+    texAngle = 0.5 * t;
 
     gl.uniform3fv(shProgram.iLightPosition, new Float32Array([lightX, lightY, lightZ]));
     gl.uniform2f(shProgram.iTexCenter, texCenterU, texCenterV);
     gl.uniform1f(shProgram.iTexAngle, texAngle);
 
-    // позиція ока в eye-space = (0,0,0)
     if (shProgram.iEyePosition !== -1 && shProgram.iEyePosition != null) {
         gl.uniform3fv(shProgram.iEyePosition, new Float32Array([0.0, 0.0, 0.0]));
     }
 
-    // 6. Відправляємо матриці в шейдери
     gl.uniformMatrix4fv(shProgram.iModelViewProjectionMatrix, false, modelViewProjection);
-    gl.uniformMatrix4fv(shProgram.iModelViewMatrix,          false, modelViewMatrix);
-    gl.uniformMatrix3fv(shProgram.iNormalMatrix,             false, normalMatrix);
+    gl.uniformMatrix4fv(shProgram.iModelViewMatrix, false, modelViewMatrix);
+    gl.uniformMatrix3fv(shProgram.iNormalMatrix, false, normalMatrix);
 
-    // 7. Малюємо поверхню (позиції + нормалі, індекси всередині Model.draw)
-    // тут вже передаємо ВСІ атрибути
     surface.draw(
         shProgram.iAttribVertex,
         shProgram.iAttribNormal,
         shProgram.iAttribTexCoord,
         shProgram.iAttribTangent
     );
+}
 
-    // 8. Запит наступного кадру для анімації світла
+function drawWireframeWithMatrices(projectionMatrix, modelViewMatrix) {
+    let modelViewProjection = m4.multiply(projectionMatrix, modelViewMatrix);
+
+    gl.useProgram(wireProgram.prog);
+
+    gl.uniformMatrix4fv(
+        wireProgram.iModelViewProjectionMatrix,
+        false,
+        modelViewProjection
+    );
+
+    gl.uniform4fv(
+        wireProgram.iWireColor,
+        new Float32Array([1.0, 1.0, 1.0, 0.85])
+    );
+
+    gl.enable(gl.POLYGON_OFFSET_FILL);
+    gl.polygonOffset(-1.0, -1.0);
+
+    gl.disable(gl.CULL_FACE);
+    gl.depthFunc(gl.LEQUAL);
+
+    surface.drawWireframe(wireProgram.iAttribVertex);
+
+    gl.depthFunc(gl.LESS);
+    gl.disable(gl.POLYGON_OFFSET_FILL);
+
+    shProgram.Use();
+}
+
+
+/* Draws a colored cube, along with a set of coordinate axes.
+ * (Note that the use of the above drawPrimitive function is not an efficient
+ * way to draw with WebGL.  Here, the geometry is so simple that it doesn't matter.)
+ */
+function draw() {
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    const aspect = gl.canvas.width / gl.canvas.height;
+    stereoCamera.setAspectRatio(aspect);
+
+    const baseViewMatrix = getBaseViewMatrix();
+
+    if (!anaglyphEnabled) {
+        const projection = m4.perspective(
+            stereoParams.fov * Math.PI / 180.0,
+            aspect,
+            stereoParams.nearClip,
+            stereoParams.farClip
+        );
+
+        drawSceneWithMatrices(projection, baseViewMatrix);
+        drawWireframeWithMatrices(projection, baseViewMatrix);
+        requestAnimationFrame(draw);
+        return;
+    }
+
+    // LEFT EYE -> RED
+    gl.colorMask(true, false, false, true);
+    let leftProjection = stereoCamera.getLeftProjectionMatrix();
+    let leftModelView = m4.multiply(stereoCamera.getLeftViewShiftMatrix(), baseViewMatrix);
+    drawSceneWithMatrices(leftProjection, leftModelView);
+    drawWireframeWithMatrices(leftProjection, leftModelView);
+
+    gl.clear(gl.DEPTH_BUFFER_BIT);
+
+    // RIGHT EYE -> CYAN
+    gl.colorMask(false, true, true, true);
+    let rightProjection = stereoCamera.getRightProjectionMatrix();
+    let rightModelView = m4.multiply(stereoCamera.getRightViewShiftMatrix(), baseViewMatrix);
+    drawSceneWithMatrices(rightProjection, rightModelView);
+    drawWireframeWithMatrices(rightProjection, rightModelView);
+
+    gl.colorMask(true, true, true, true);
+
     requestAnimationFrame(draw);
 }
 
@@ -209,7 +282,7 @@ function initGL() {
     shProgram = new ShaderProgram('Basic', prog);
     shProgram.Use();
 
-    document.addEventListener("keydown", handleKeyDown);
+    //document.addEventListener("keydown", handleKeyDown);
 
     // Атрибути
     shProgram.iAttribVertex = gl.getAttribLocation(prog, "vertex");
@@ -236,8 +309,18 @@ function initGL() {
     shProgram.iSamplerNormal   = gl.getUniformLocation(prog, "uSamplerNormal"); 
 
 
-    shProgram.iTexCenter = gl.getUniformLocation(prog, "uTexCenter"); // NEW
-    shProgram.iTexAngle  = gl.getUniformLocation(prog, "uTexAngle"); // NEW
+    shProgram.iTexCenter = gl.getUniformLocation(prog, "uTexCenter");
+    shProgram.iTexAngle  = gl.getUniformLocation(prog, "uTexAngle"); 
+
+    //MSVR #1
+    let wireProg = createProgram(gl, wireVertexShaderSource, wireFragmentShaderSource);
+
+    wireProgram = {
+        prog: wireProg,
+        iAttribVertex: gl.getAttribLocation(wireProg, "vertex"),
+        iModelViewProjectionMatrix: gl.getUniformLocation(wireProg, "ModelViewProjectionMatrix"),
+        iWireColor: gl.getUniformLocation(wireProg, "uWireColor")
+    };
 
     // Створюємо поверхню: стартові значення U/V сегментів
     surface = new Model(gl, surfaceFunc, {
@@ -252,7 +335,7 @@ function initGL() {
     surface.idTextureNormal   = LoadTexture("textures/normal.jpg"); // NEW
  
     gl.enable(gl.DEPTH_TEST);
-    gl.clearColor(0, 1, 1, 1.2);
+    gl.clearColor(0.02, 0.03, 0.06, 1.0);
 
     // привʼязка слайсерів
     gl.uniform1i(shProgram.iSamplerDiffuse,  0);
@@ -280,41 +363,45 @@ function initGL() {
 
 
 function handleKeyDown(e) {
-    const step = 0.02; // крок у UV-просторі
+    const step = 0.02;
 
     switch (e.key) {
         case "a":
         case "A":
             texCenterU -= step;
             break;
+
         case "d":
         case "D":
             texCenterU += step;
             break;
+
         case "w":
         case "W":
             texCenterV += step;
             break;
+
         case "s":
         case "S":
             texCenterV -= step;
             break;
+
+        case "t":
+        case "T":
+            anaglyphEnabled = !anaglyphEnabled;
+            return;
+
         default:
             return;
     }
 
-    // обмежуємо в діапазоні [0,1], щоб не вилітати за текстуру
     texCenterU = Math.max(0.0, Math.min(1.0, texCenterU));
     texCenterV = Math.max(0.0, Math.min(1.0, texCenterV));
 
-    // оновлюємо текст на сторінці
     if (texCenterLabel) {
         texCenterLabel.textContent =
             "(" + texCenterU.toFixed(2) + ", " + texCenterV.toFixed(2) + ")";
     }
-
-    // для дебагу можна включити:
-    // console.log("texCenter:", texCenterU, texCenterV);
 }
 
 
@@ -350,6 +437,59 @@ function createProgram(gl, vShader, fShader) {
 }
 
 
+
+class StereoCamera {
+    constructor(convergence, eyeSeparation, aspectRatio, fov, nearClip, farClip) {
+        this.convergence = convergence;
+        this.eyeSeparation = eyeSeparation;
+        this.aspectRatio = aspectRatio;
+        this.fov = fov;
+        this.nearClip = nearClip;
+        this.farClip = farClip;
+    }
+
+    setAspectRatio(aspectRatio) {
+        this.aspectRatio = aspectRatio;
+    }
+
+    getLeftProjectionMatrix() {
+        const top = this.nearClip * Math.tan((this.fov * Math.PI / 180.0) / 2.0);
+        const bottom = -top;
+
+        const a = this.aspectRatio * Math.tan((this.fov * Math.PI / 180.0) / 2.0) * this.convergence;
+        const b = a - this.eyeSeparation / 2.0;
+        const c = a + this.eyeSeparation / 2.0;
+
+        const left = -b * this.nearClip / this.convergence;
+        const right = c * this.nearClip / this.convergence;
+
+        return m4.frustum(left, right, bottom, top, this.nearClip, this.farClip);
+    }
+
+    getRightProjectionMatrix() {
+        const top = this.nearClip * Math.tan((this.fov * Math.PI / 180.0) / 2.0);
+        const bottom = -top;
+
+        const a = this.aspectRatio * Math.tan((this.fov * Math.PI / 180.0) / 2.0) * this.convergence;
+        const b = a - this.eyeSeparation / 2.0;
+        const c = a + this.eyeSeparation / 2.0;
+
+        const left = -c * this.nearClip / this.convergence;
+        const right = b * this.nearClip / this.convergence;
+
+        return m4.frustum(left, right, bottom, top, this.nearClip, this.farClip);
+    }
+
+    getLeftViewShiftMatrix() {
+        return m4.translation(this.eyeSeparation / 2.0, 0, 0);
+    }
+
+    getRightViewShiftMatrix() {
+        return m4.translation(-this.eyeSeparation / 2.0, 0, 0);
+    }
+}
+
+
 /**
  * initialization function that will be called when the page has loaded
  */
@@ -375,6 +515,15 @@ function init() {
             "<p>Sorry, could not initialize the WebGL graphics context: " + e + "</p>";
         return;
     }
+
+    stereoCamera = new StereoCamera(
+        stereoParams.convergence,
+        stereoParams.eyeSeparation,
+        gl.canvas.width / gl.canvas.height,
+        stereoParams.fov,
+        stereoParams.nearClip,
+        stereoParams.farClip
+    );
 
     spaceball = new TrackballRotator(canvas, draw, 0);
 
@@ -407,6 +556,45 @@ function init() {
         updateSegments();
     } else {
         console.warn("uSegments / vSegments sliders not found in HTML");
+    }
+
+    let eyeSlider  = document.getElementById("eyeSeparation");
+    let convSlider = document.getElementById("convergence");
+    let fovSlider  = document.getElementById("fov");
+    let nearSlider = document.getElementById("nearClip");
+
+    let eyeValue  = document.getElementById("eyeSeparationValue");
+    let convValue = document.getElementById("convergenceValue");
+    let fovValue  = document.getElementById("fovValue");
+    let nearValue = document.getElementById("nearClipValue");
+
+    function updateStereoControls() {
+        if (!stereoCamera) return;
+
+        stereoParams.eyeSeparation = parseFloat(eyeSlider.value);
+        stereoParams.convergence   = parseFloat(convSlider.value);
+        stereoParams.fov           = parseFloat(fovSlider.value);
+        stereoParams.nearClip      = parseFloat(nearSlider.value);
+
+        stereoCamera.eyeSeparation = stereoParams.eyeSeparation;
+        stereoCamera.convergence   = stereoParams.convergence;
+        stereoCamera.fov           = stereoParams.fov;
+        stereoCamera.nearClip      = stereoParams.nearClip;
+        stereoCamera.farClip       = stereoParams.farClip;
+
+        if (eyeValue)  eyeValue.textContent  = stereoParams.eyeSeparation.toFixed(2);
+        if (convValue) convValue.textContent = stereoParams.convergence.toFixed(1);
+        if (fovValue)  fovValue.textContent  = stereoParams.fov.toFixed(0);
+        if (nearValue) nearValue.textContent = stereoParams.nearClip.toFixed(2);
+    }
+
+    if (eyeSlider && convSlider && fovSlider && nearSlider) {
+        eyeSlider.addEventListener("input", updateStereoControls);
+        convSlider.addEventListener("input", updateStereoControls);
+        fovSlider.addEventListener("input", updateStereoControls);
+        nearSlider.addEventListener("input", updateStereoControls);
+
+        updateStereoControls();
     }
 
     // Стартова відмальовка + анімація світла

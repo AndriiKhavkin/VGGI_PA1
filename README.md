@@ -1,28 +1,21 @@
-# VGGI – CONTROL TASK (Practical Assignment №4) 
-###  **Texture Mapping and Normal Mapping – Sievert’s Surface (Variant 18)**    
+# MSVR – Practical Assignment №1  
+### **WebGL Stereo Camera and Anaglyph Rendering – Sievert’s Surface (Variant 18)**
+
 **Author:** Andrii Khavkin  
 **Group:** TR-52mp  
-**Course:** Visualization of Graphical and Geometric Information  
+**Course:** Methods of Synthesis of Virtual Reality  
 
 ---
+
 ## Overview
 
-This project extends the analytical model of Sievert’s Surface from PA3 by implementing  
-**interactive texture-coordinate transformation** in the UV plane.  
-According to the specification for even-numbered variants, the required feature is:
+This project implements a WebGL-based stereo camera system for rendering an analytical 3D surface as a red-cyan anaglyph image.
 
-### ✔ **Texture Rotation (even variants)**  
-Additionally, the **texture center** can be moved interactively using keyboard input.  
+The work is based on the analytical surface renderer developed in the previous discipline **“Visualization of Graphical and Geometric Information”**. The existing WebGL pipeline was extended with an off-axis stereo camera, two-pass rendering, color-channel masking, and wireframe rendering over filled polygons.
 
-The model is shaded using a full **per-pixel PBR-style pipeline**, including:
+The application renders **Sievert’s Surface** as a triangle mesh with texture mapping, normal mapping, specular mapping, per-pixel lighting, and an animated point light source.
 
-- diffuse (albedo) map  
-- normal map  
-- specular map  
-- dynamically animated point light  
-- TBN basis constructed using Gram–Schmidt (normal priority, Variant 18 rule)
-
-Sievert’s Surface is generated analytically and rendered as a triangle mesh.
+The main goal of the assignment is to demonstrate stereoscopic visualization using a WebGL stereo camera with adjustable parameters.
 
 ---
 
@@ -30,207 +23,276 @@ Sievert’s Surface is generated analytically and rendered as a triangle mesh.
 
 <div align="center">
 
-<img src="screenshots/final_render_CGW.png" width="500">
+<img src="screenshots/final_render.png" width="600">
 
-<img src="screenshots/pdf_reference.png" width="600">
+<img src="screenshots/MSVR1.png" width="600">
 
 </div>
 
 ---
 
-## Assignment Requirements (PA4)
+## Assignment Requirements
 
-- extend the PA3 model (texture + normal + specular mapping)
-- implement interactive **UV transformation**
-- even variants → **rotate the texture around arbitrary UV center**
-- allow texture center movement using keyboard (`W`, `A`, `S`, `D`)
-- perform rotation entirely in the shader
-- update TBN-based shading accordingly
-- render the analytical Sievert Surface as a triangle mesh
+The practical assignment requires implementing a stereo camera system in WebGL.
 
----
+The application includes:
 
-## Sievert Surface – Variant 18
-
-The analytic surface is defined by:
-
-- \( \varphi(u) \)  
-- \( a(u, v) \)  
-- \( r(u, v) \)  
-- \( z(u, v) \)
-
-The project uses these equations exactly as given in the original Sievert’s Surface definition.  
-
-In code, the parametrization is implemented in the `surfaceFunc(u, v)` function, which returns a 3D point \((x, y, z)\) for given parameters \((u, v)\) and applies a global scale to fit the surface into the camera view.   
-
-<div align="center">
-<img src="screenshots/pdf_reference.png" width="600">
-</div>
+- rendering of an analytical 3D model;
+- anaglyph stereo visualization using red-cyan color masks;
+- negative parallax effect;
+- wireframe rendering over filled polygons;
+- interactive model rotation using the mouse;
+- adjustable stereo camera parameters:
+  - eye separation;
+  - convergence;
+  - field of view;
+  - near clipping plane;
+- preparation of the rendering pipeline for displaying a webcam stream in the zero-parallax plane.
 
 ---
 
-## 📐 Mathematical Background
+## Stereo Camera Implementation
 
-Texture rotation around a point `(u_c , v_c)` is computed as:
+The stereo effect is produced by rendering the scene twice:
 
-(u', v') = R(θ) · ((u, v) – (u_c, v_c)) + (u_c, v_c)
+1. **Left eye pass**  
+   The scene is rendered using the left-eye projection matrix and written only to the red channel.
 
-Where the rotation matrix is:
+2. **Right eye pass**  
+   The scene is rendered using the right-eye projection matrix and written to the green and blue channels.
 
-R(θ) = | cosθ -sinθ | *| sinθ cosθ |
+This forms a red-cyan anaglyph image that can be viewed with anaglyph stereo glasses.
 
+The color masks are configured as follows:
 
-This transformation is performed in the **vertex shader**, prior to normal mapping.
+```javascript
+// Left eye
+gl.colorMask(true, false, false, true);
+
+// Right eye
+gl.colorMask(false, true, true, true);
+```
+
+The depth buffer is cleared between the two passes to avoid incorrect depth rejection between left-eye and right-eye views.
 
 ---
 
+## Stereo Camera Parameters
+
+The stereo camera uses the following adjustable parameters:
+
+| Parameter | Description |
+|---|---|
+| Eye separation | Distance between the virtual left and right cameras |
+| Convergence | Distance to the zero-parallax plane |
+| FOV | Vertical field of view angle |
+| Near clip | Near clipping plane distance |
+
+The projection matrices are calculated separately for the left and right eye using an asymmetric frustum.
+
+The left and right camera views are additionally shifted along the X axis according to the eye separation value.
+
+---
+
+## Negative Parallax
+
+The model is positioned relative to the convergence plane so that it can produce a negative parallax effect. In this mode, parts of the model appear to be located in front of the screen plane when viewed through red-cyan anaglyph glasses.
+
+This effect is controlled by the relationship between:
+
+- model position;
+- convergence distance;
+- eye separation;
+- field of view.
+
+The user can adjust these parameters interactively using the sliders on the page.
+
+---
+
+## Analytical Surface
+
+The rendered object is **Sievert’s Surface**, generated analytically from its parametric definition.
+
+The surface is built as a regular parameter grid over `(u, v)`, where each grid point is converted into a 3D point by the function:
+
+```javascript
+surfaceFunc(u, v)
+```
+
+The resulting vertices are connected into indexed triangles. The model also stores vertex normals, texture coordinates, tangent vectors, and index buffers for both filled rendering and wireframe rendering.
+
+---
+
+## Rendering Pipeline
+
+The surface uses the rendering pipeline inherited from the previous WebGL work:
+
+- analytical mesh generation;
+- indexed triangle rendering;
+- vertex normals;
+- tangent vectors;
+- TBN basis;
+- diffuse texture;
+- specular texture;
+- normal map;
+- per-pixel Phong lighting;
+- animated point light.
+
+The stereo camera logic is added on top of this pipeline without removing the previous shading functionality.
+
+---
+
+## Wireframe over Filled Polygons
+
+The model is rendered in two layers:
+
+1. **Filled surface**  
+   The triangle mesh is rendered with textures, normal mapping, and lighting.
+
+2. **Wireframe overlay**  
+   A separate line index buffer is used to render the polygonal structure over the filled model.
+
+The wireframe is rendered through a separate lightweight shader that outputs a constant color. This makes the mesh structure visible independently of the surface texture.
+
+---
 
 ## Project Structure
 
-WebGL/<br>
-│<br>
-├── index.html           # HTML page, canvas, UI text, U/V sliders<br>
-├── main.js              # WebGL init, shaders, matrices, light animation, draw loop<br>
-├── model.js             # Sievert’s Surface mesh, normals, tangents, index buffers<br>
-├── shader.gpu           # Vertex + fragment shaders (TBN + normal mapping)<br>
-├── TextureHandler.js    # Helper for loading 2D textures with a blue fallback pixel<br>
-│<br>
-├── Utils/<br>
-│   ├── m4.js            # Matrix utilities (MV, MVP, inverse/transpose)<br>
-│   └── trackball-rotator.js # Mouse-based virtual trackball for view rotation<br>
-│<br>
-├── textures/<br>
-│   ├── diffuse.jpg      # Diffuse (albedo) sand texture<br>
-│   ├── specular.jpg     # Specular/gloss map<br>
-│   └── normal.jpg       # RGB tangent-space normal map<br>
-│<br>
-└── screenshots/<br>
-    ├── final_render_CT.png<br>
-    └── pdf_reference.png<br>
-
-
-TextureHandler.js initializes each texture as a 1×1 blue pixel and then asynchronously replaces it with the loaded image once it is available, forcing a redraw.
+```text
+WebGL/
+│
+├── index.html              # HTML page, canvas, UI controls, assignment description
+├── main.js                 # WebGL initialization, stereo camera, draw loop, UI logic
+├── model.js                # Analytical surface mesh, normals, tangents, wireframe indices
+├── shader.gpu              # Main shader and wireframe shader sources
+├── TextureHandler.js       # Helper for loading 2D textures
+│
+├── Utils/
+│   ├── m4.js               # Matrix utilities
+│   └── trackball-rotator.js # Mouse-based model rotation
+│
+├── textures/
+│   ├── diffuse.jpg         # Diffuse texture
+│   ├── specular.jpg        # Specular texture
+│   └── normal.jpg          # Tangent-space normal map
+│
+└── screenshots/
+    ├── final_render.png
+    └── stereo_wireframe.png
+```
 
 ---
 
-## 🔧 Implementation Details
+## Interactive Controls
 
-### **1. UV Generation**
-Each vertex stores parameter-space coordinates `(u, v)` generated analytically during mesh construction.
+### Mouse
 
-### **2. TBN Construction**
-- Tangent `T`, bitangent `B`, and normal `N` are computed per vertex.
-- Gram–Schmidt orthogonalization is applied with **normal priority** (Variant 18).
-- The resulting TBN basis transforms normal-map vectors from tangent space to world space.
+| Action | Description |
+|---|---|
+| Mouse drag | Rotate the model around its center |
 
-### **3. Texture Rotation**
-In the vertex shader:
+### Keyboard
 
-`` glsl
-vec2 centered = texCoord - uTexCenter;
-float c = cos(uTexAngle);
-float s = sin(uTexAngle);
-
-vec2 rotated = vec2(
-    c*centered.x - s*centered.y,
-    s*centered.x + c*centered.y
-);
-
-vTexCoord = rotated + uTexCenter; ``
-
-### **4. Per-Pixel Shading**
-
-The fragment shader applies:
-
- - sampled diffuse color
- - sampled specular intensity
- - sampled normal perturbation via TBN
- - ambient + diffuse + specular (Phong) lighting
- - dynamic animated point light
-
-### Interactive Controls
-Keyboard
-Key	Action
-W	move texture center upward
-S	move texture center downward
-A	move center left
-D	move center right
+| Key | Action |
+|---|---|
+| T | Toggle stereo anaglyph / mono rendering |
 
 ### Sliders
-Control	Description
-U segments	mesh resolution in u
-V segments	mesh resolution in v
 
-The current texture center is displayed on the page:
-
-Texture center (u, v): (0.50, 0.50)
+| Control | Description |
+|---|---|
+| U segments | Surface resolution along parameter `u` |
+| V segments | Surface resolution along parameter `v` |
+| Eye separation | Distance between the virtual cameras |
+| Convergence | Zero-parallax distance |
+| FOV | Vertical field of view angle |
+| Near clip | Near clipping plane distance |
 
 ---
 
 ## Running the Project
 
-Option 1 – VS Code Live Server
+### Option 1 – VS Code Live Server
 
-Open the folder in VS Code.
+1. Open the project folder in VS Code.
+2. Right-click `index.html`.
+3. Select **Open with Live Server**.
+4. The page will open in the browser.
 
-Right-click index.html → Open with Live Server.
+### Option 2 – http-server
 
-The page will open in the browser (typically at http://127.0.0.1:5500/...).
+Install `http-server`:
 
-Option 2 – http-server
+```bash
 npm install -g http-server
+```
+
+Run the server from the project directory:
+
+```bash
 http-server
+```
 
+Then open the local address shown in the terminal, for example:
 
-Then open in your browser:
-
+```text
 http://localhost:8080
+```
 
-
-WebGL content must be served via HTTP; direct file:// access is not allowed due to browser security restrictions.
-
----
-
-## Video Presentation
-
-The video (1.5–2 minutes) should demonstrate:
-
-analytic Sievert’s Surface (Variant 18),
-
-textured model with normal mapping,
-
-dynamic point light moving around the surface,
-
-effect of U/V resolution sliders,
-
-close-ups showing sand-like relief and specular highlights.
-
-Video link: https://youtu.be/e4_h7TrfRvM
+WebGL content should be served through HTTP. Direct `file://` access may cause browser security restrictions, especially when loading textures or webcam input.
 
 ---
 
-## CT(PA3) Checklist
+Video Explanation (for the assignment)
 
- - [x] Texture-space rotation
+The accompanying 2-minute video explains:
 
- - [x] Center translation via keyboard
+- how the analytical Sievert’s Surface is generated from parametric equations,
+- how the triangle mesh and wireframe index buffers are constructed,
+- how the stereo camera is implemented using asymmetric frustums,
+- how left-eye and right-eye rendering passes are combined into a red-cyan anaglyph image,
+- how color masking and depth-buffer control are used during stereo rendering,
+- how wireframe rendering over filled polygons is implemented,
+- how the stereo camera parameters are adjusted interactively,
+- and how the model is rotated using the trackball mouse controller.
 
- - [x] Per-pixel shading
+link: https://youtu.be/Dl4njZ3JzWg
 
- - [x] Normal + specular + diffuse maps
+---
 
- - [x] Analytical Sievert Surface
 
- - [x] TBN with Gram–Schmidt (normal priority)
 
- - [x] Animated point light
+## Implementation Checklist
 
- - [x] UV transformation in vertex shader
+- [x] WebGL scene initialization
+- [x] Analytical Sievert’s Surface generation
+- [x] Indexed triangle mesh
+- [x] Normals and tangent vectors
+- [x] Diffuse, normal, and specular maps
+- [x] Per-pixel lighting
+- [x] Animated point light
+- [x] Trackball mouse rotation
+- [x] Stereo camera class
+- [x] Left-eye and right-eye asymmetric frustums
+- [x] Red-cyan anaglyph rendering
+- [x] Depth-buffer reset between stereo passes
+- [x] Adjustable eye separation
+- [x] Adjustable convergence
+- [x] Adjustable FOV
+- [x] Adjustable near clipping plane
+- [x] Wireframe over filled polygons
+- [x] Mono/stereo toggle
 
- - [x] Screenshots added
+---
+
+## Notes
+
+The project reuses the analytical surface and shading architecture from the previous WebGL assignment, but the main focus of this laboratory work is the implementation of stereoscopic rendering.
+
+The rendering pipeline is organized so that additional VR-related features, such as a webcam stream in the zero-parallax plane, can be integrated into the scene without restructuring the main surface rendering code.
 
 ---
 
 ## Licensing
 
-Educational project for KPI / VGGI course (2025).
+Educational project for KPI / Methods of Synthesis of Virtual Reality course.

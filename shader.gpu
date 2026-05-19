@@ -107,3 +107,23 @@ void main() {
     gl_FragColor = vec4(color, 1.0);
 }
 `;
+//new shader for MSVR #1
+const wireVertexShaderSource = `
+attribute vec3 vertex;
+
+uniform mat4 ModelViewProjectionMatrix;
+
+void main() {
+    gl_Position = ModelViewProjectionMatrix * vec4(vertex, 1.0);
+}
+`;
+
+const wireFragmentShaderSource = `
+precision mediump float;
+
+uniform vec4 uWireColor;
+
+void main() {
+    gl_FragColor = uWireColor;
+}
+`;
