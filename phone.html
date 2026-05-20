@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>PA#2 Phone Tangible Controller</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #0b0c0f;
+      color: #f2f2f2;
+      padding: 20px;
+    }
+
+    button {
+      padding: 12px 18px;
+      margin: 6px 0;
+      border: 0;
+      border-radius: 10px;
+      font-size: 16px;
+    }
+
+    .box {
+      border: 1px solid #333;
+      border-radius: 14px;
+      padding: 16px;
+      margin-top: 16px;
+      background: #151821;
+    }
+
+    .value {
+      font-family: monospace;
+      font-size: 17px;
+    }
+
+    .ok { color: #7CFF8A; }
+    .bad { color: #FF7777; }
+  </style>
+</head>
+<body>
+  <h2>PA#2 Tangible Interface</h2>
+  <p>Variant 14: compass-like rotation using phone orientation.</p>
+  <!-- WebSocket is not used in the final version -->
+  <!-- <button id="connectBtn">Connect WebSocket</button> -->
+  <button id="permissionBtn">Enable sensors</button>
+  <button id="zeroBtn">Calibrate zero</button>
+
+  <div class="box">
+    <!-- <p>WebSocket: <span id="wsStatus" class="bad">not connected</span></p> -->
+    <p>Sensors: <span id="sensorStatus" class="bad">not enabled</span></p>
+    <p>Secure context: <span id="secureStatus" class="value">...</span></p>
+    <p>Events received: <span id="eventCount" class="value">0</span></p>
+  </div>
+
+  <div class="box">
+    <p>Alpha: <span id="alpha" class="value">0</span></p>
+    <p>Beta: <span id="beta" class="value">0</span></p>
+    <p>Gamma: <span id="gamma" class="value">0</span></p>
+    <p>Absolute: <span id="absolute" class="value">false</span></p>
+    <p>Yaw: <span id="yaw" class="value">0</span></p>
+  </div>
+
+  <script>
+    let socket = null;
+
+    let zeroAlpha = 0;
+    let currentAlpha = 0;
+    let eventCounter = 0;
+
+    const wsStatusEl = document.getElementById("wsStatus");
+    const sensorStatusEl = document.getElementById("sensorStatus");
+    const secureStatusEl = document.getElementById("secureStatus");
+    const eventCountEl = document.getElementById("eventCount");
+
+    const alphaEl = document.getElementById("alpha");
+    const betaEl = document.getElementById("beta");
+    const gammaEl = document.getElementById("gamma");
+    const absoluteEl = document.getElementById("absolute");
+    const yawEl = document.getElementById("yaw");
+
+    secureStatusEl.textContent = window.isSecureContext ? "true" : "false";
+
+    function connectSocket() {
+      const protocol = window.location.protocol === "https:" ? "wss://" : "ws://";
+      const host = window.location.host;
+      const url = protocol + host;
+
+      socket = new WebSocket(url);
+
+      socket.onopen = () => {
+        wsStatusEl.textContent = "connected";
+        wsStatusEl.className = "ok";
+      };
+
+      socket.onclose = () => {
+        wsStatusEl.textContent = "disconnected";
+        wsStatusEl.className = "bad";
+      };
+
+      socket.onerror = () => {
+        wsStatusEl.textContent = "error";
+        wsStatusEl.className = "bad";
+      };
+    }
+
+    function normalizeAngleDeg(a) {
+      while (a > 180) a -= 360;
+      while (a < -180) a += 360;
+      return a;
+    }
+
+    let lastSendTime = 0;
+
+function sendYaw(yawDeg, alpha, beta, gamma, absolute) {
+  const now = performance.now();
+
+  // обмеження частоти приблизно до 40 Hz
+  if (now - lastSendTime < 40) return;
+  lastSendTime = now;
+
+  const yawRad = yawDeg * Math.PI / 180.0;
+
+  fetch("/sensor", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      type: "phoneOrientation",
+      yaw: yawRad,
+      yawDeg: yawDeg,
+      alpha: alpha,
+      beta: beta,
+      gamma: gamma,
+      absolute: absolute,
+      timestamp: now
+    })
+  }).catch(err => {
+    wsStatusEl.textContent = "POST error";
+    wsStatusEl.className = "bad";
+    console.warn("Sensor POST error:", err);
+  });
+}
+
+
+    function handleOrientation(e) {
+      eventCounter++;
+      eventCountEl.textContent = eventCounter;
+
+      const alpha = e.alpha;
+      const beta = e.beta;
+      const gamma = e.gamma;
+
+      // Беремо тільки absolute orientation, щоб не було дублювання двох типів подій
+      if (e.absolute !== true) {
+        return;
+      }
+
+      alphaEl.textContent = alpha == null ? "null" : alpha.toFixed(2);
+      betaEl.textContent = beta == null ? "null" : beta.toFixed(2);
+      gammaEl.textContent = gamma == null ? "null" : gamma.toFixed(2);
+      absoluteEl.textContent = String(e.absolute);
+
+      if (alpha == null) {
+        sensorStatusEl.textContent = "event received, but alpha is null";
+        sensorStatusEl.className = "bad";
+        return;
+      }
+
+      currentAlpha = alpha;
+
+      const yawDeg = normalizeAngleDeg(currentAlpha - zeroAlpha);
+
+      yawEl.textContent = yawDeg.toFixed(2);
+
+      sensorStatusEl.textContent = "receiving orientation";
+      sensorStatusEl.className = "ok";
+
+      sendYaw(yawDeg, alpha, beta, gamma, e.absolute);
+    }
+
+    async function enableSensors() {
+      sensorStatusEl.textContent = "trying to enable...";
+
+      try {
+        if (
+          typeof DeviceOrientationEvent !== "undefined" &&
+          typeof DeviceOrientationEvent.requestPermission === "function"
+        ) {
+          const result = await DeviceOrientationEvent.requestPermission();
+
+          if (result !== "granted") {
+            sensorStatusEl.textContent = "permission denied";
+            sensorStatusEl.className = "bad";
+            return;
+          }
+        }
+
+        window.addEventListener("deviceorientationabsolute", handleOrientation, true);
+
+        sensorStatusEl.textContent = "listeners added";
+        sensorStatusEl.className = "ok";
+      } catch (err) {
+        sensorStatusEl.textContent = "sensor error: " + err.message;
+        sensorStatusEl.className = "bad";
+      }
+    }
+
+    // document.getElementById("connectBtn").onclick = connectSocket;
+    document.getElementById("permissionBtn").onclick = enableSensors;
+
+    document.getElementById("zeroBtn").onclick = () => {
+      zeroAlpha = currentAlpha;
+      yawEl.textContent = "0.00";
+    };
+  </script>
+</body>
+</html>

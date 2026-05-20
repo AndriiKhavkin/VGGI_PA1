@@ -25,6 +25,14 @@ let anaglyphEnabled = true;
 
 let wireProgram = null; // MSVR #1
 
+// MSVR 2
+let phoneControlEnabled = true;
+let phoneYaw = 0.0;          // filtered target yaw
+let phoneYawRaw = 0.0;       // latest raw yaw from phone
+let phoneYawSmoothed = 0.0;  // final rendered yaw
+let phoneYawInitialized = false;
+let phoneSocket = null;
+
 function deg2rad(angle) {
     return angle * Math.PI / 180;
 }
@@ -36,6 +44,17 @@ function mat3FromMat4(m) {
         m[4], m[5], m[6],
         m[8], m[9], m[10]
     ]);
+}
+
+function normalizeAngleRad(a) {
+    while (a > Math.PI) a -= 2.0 * Math.PI;
+    while (a < -Math.PI) a += 2.0 * Math.PI;
+    return a;
+}
+
+function smoothAngleRad(current, target, factor) {
+    const delta = normalizeAngleRad(target - current);
+    return normalizeAngleRad(current + delta * factor);
 }
 
 // Constructor from skeleton
@@ -142,7 +161,16 @@ function getBaseViewMatrix() {
     let rotateToPointZero = m4.multiply(rotateY, rotateX);
     let translateToPointZero = m4.translation(0, 0.6, -4.2);
 
+    let phoneRotation = m4.identity();
+
+    if (phoneControlEnabled) {
+        phoneYawSmoothed = smoothAngleRad(phoneYawSmoothed, phoneYaw, 0.35);
+        phoneRotation = m4.yRotation(-phoneYawSmoothed * 1.0);
+    }
+
     let matAccum0 = m4.multiply(rotateToPointZero, modelView);
+    matAccum0 = m4.multiply(phoneRotation, matAccum0);
+
     let matAccum1 = m4.multiply(translateToPointZero, matAccum0);
 
     return matAccum1;
@@ -390,6 +418,11 @@ function handleKeyDown(e) {
         case "T":
             anaglyphEnabled = !anaglyphEnabled;
             return;
+        case "m":
+        case "M":
+            phoneControlEnabled = !phoneControlEnabled;
+            console.log("Phone control:", phoneControlEnabled ? "enabled" : "disabled");
+            return;
 
         default:
             return;
@@ -403,6 +436,57 @@ function handleKeyDown(e) {
             "(" + texCenterU.toFixed(2) + ", " + texCenterV.toFixed(2) + ")";
     }
 }
+
+let lastSensorLogTime = 0;
+
+function initPhonePolling() {
+    console.log("Phone sensor polling started");
+
+    setInterval(async function () {
+        try {
+            const response = await fetch(window.location.origin + "/sensor?t=" + Date.now(), {
+                cache: "no-store"
+            });
+
+            if (!response.ok) {
+                console.warn("Sensor polling HTTP error:", response.status);
+                return;
+            }
+
+            const data = await response.json();
+
+            if (data.type === "phoneOrientation") {
+                phoneYawRaw = Number(data.yaw) || 0;
+
+                if (!phoneYawInitialized) {
+                    phoneYaw = phoneYawRaw;
+                    phoneYawSmoothed = phoneYawRaw;
+                    phoneYawInitialized = true;
+                } else {
+                    let delta = normalizeAngleRad(phoneYawRaw - phoneYaw);
+
+                    // Максимальний крок за один polling-запит.
+                    // Не блокуємо рух, а тільки обрізаємо надто різкі скачки.
+                    const maxStep = 10.0 * Math.PI / 180.0;
+
+                    if (delta > maxStep) delta = maxStep;
+                    if (delta < -maxStep) delta = -maxStep;
+
+                    phoneYaw = normalizeAngleRad(phoneYaw + delta);
+                }
+
+                const now = performance.now();
+                if (now - lastSensorLogTime > 500) {
+                    console.log("Phone yaw received:", data.yawDeg, phoneYaw);
+                    lastSensorLogTime = now;
+                }
+            }
+        } catch (err) {
+            console.warn("Sensor polling error:", err);
+        }
+    }, 50);
+}
+
 
 
 /* Creates a program for use in the WebGL context gl, and returns the
@@ -596,6 +680,8 @@ function init() {
 
         updateStereoControls();
     }
+
+    initPhonePolling();
 
     // Стартова відмальовка + анімація світла
     draw();

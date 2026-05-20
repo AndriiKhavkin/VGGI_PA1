@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>PA#1 WebGL Stereo Camera</title>
+  <title>PA#2 Tangible Interface</title>
   <style>
 :root{
   --bg:#0b0c0f;
@@ -13,69 +13,77 @@
   --shadow: rgba(0,0,0,0.45);
 }
 *{box-sizing:border-box}
-html,body{height:100%}
+html,body{min-height:100%}
 body{
   margin:0;
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Liberation Sans", sans-serif;
   background: radial-gradient(1200px 700px at 20% 10%, #1a1f2b 0%, var(--bg) 55%) fixed;
   color:var(--text);
-  line-height:1.6;
+  line-height:1.55;
 }
 .container{
   max-width: 1280px;
   margin: 0 auto;
-  padding: 8px 12px 18px;
+  padding: 10px 12px 18px;
 }
 .header{
   border:1px solid var(--line);
-  background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0t.03));
-  padding: 10px 14px;
-  padding: 18px 18px 16px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
+  padding: 16px 18px;
   box-shadow: 0 14px 40px var(--shadow);
+  border-radius: 14px;
 }
 h1{
   margin:0;
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 780;
   letter-spacing: 0.2px;
 }
+h2{
+  margin: 0 0 10px;
+  font-size: 16px;
+}
 h3{
-  margin: 10px 0 0;
+  margin: 10px 0 8px;
   font-size: 13px;
-  font-weight: 650;
-  color: var(--muted);
+  font-weight: 700;
+  color: var(--text);
 }
 p,li{color:var(--muted)}
+p{margin: 0 0 12px;}
+li{margin: 2px 0;}
 pre{
-  border:1px solid var(--muted);
+  border:1px solid var(--line);
   background: rgba(0,0,0,0.35);
-  padding: 14px;
-  border-radius: 14px;
+  padding: 12px;
+  border-radius: 12px;
   overflow:auto;
   color: var(--text);
-  font-size: 13px;
+  font-size: 12px;
+  line-height: 1.35;
 }
 .grid{
   display:grid;
-  grid-template-columns: 0.48fr 1.52fr;
+  grid-template-columns: 0.72fr 1.28fr;
   gap: 12px;
-  margin-top: 10px;
+  margin-top: 12px;
+  align-items:start;
 }
-@media (max-width: 920px){
+@media (max-width: 960px){
   .grid{grid-template-columns:1fr}
 }
 .card{
   border:1px solid var(--line);
   background: rgba(16,18,25,0.72);
   border-radius: 18px;
-  padding: 12px;
+  padding: 14px;
   box-shadow: 0 14px 40px var(--shadow);
 }
 .badge{
   display:flex;
   flex-wrap:wrap;
   gap:8px;
-  margin-top: 10px;
+  margin-top: 12px;
 }
 .kbd{
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
@@ -86,8 +94,34 @@ pre{
   border-radius: 9px;
   color: var(--text);
 }
-a{color:var(--text)}
-#canvas-holder{display:flex; justify-content:center; margin-top:10px}
+.controls-grid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 14px 0;
+}
+@media (max-width: 720px){
+  .controls-grid{grid-template-columns:1fr}
+}
+.control-row{
+  display:grid;
+  grid-template-columns: 125px minmax(120px, 1fr) 44px;
+  gap: 8px;
+  align-items:center;
+  margin: 8px 0;
+  color: var(--muted);
+}
+input[type="range"]{
+  accent-color:#d9d9d9;
+  width:100%;
+}
+.status-line{
+  display:flex;
+  flex-wrap:wrap;
+  gap: 10px;
+  align-items:center;
+  margin: 10px 0 12px;
+}
 .canvas-wrap{
   position:relative;
   display:inline-block;
@@ -96,7 +130,12 @@ a{color:var(--text)}
   border:1px solid var(--line);
   background:#05060a;
 }
-#webglcanvas{display:block; background:#05060a;}
+.canvas-holder{
+  display:flex;
+  justify-content:center;
+  margin-top:12px;
+}
+#webglcanvas{display:block; background:#05060a; max-width:100%; height:auto;}
 #texCenterMarker{
   position:absolute;
   width: 14px;
@@ -128,26 +167,7 @@ a{color:var(--text)}
   background: rgba(245,245,245,0.65);
   transform: translate(-50%,-50%);
 }
-input[type="range"]{accent-color:#d9d9d9}
-#uvMarker{
-  position:absolute;
-  width:14px;height:14px;
-  transform:translate(-50%,-50%);
-  pointer-events:none;
-  border:1px solid #fff;
-  border-radius:50%;
-  box-shadow:0 0 0 2px rgba(0,0,0,.65);
-}
-#uvMarker::before,#uvMarker::after{
-  content:"";
-  position:absolute;
-  left:50%;top:50%;
-  background:#fff;
-  transform:translate(-50%,-50%);
-}
-#uvMarker::before{ width:14px;height:1px; }
-#uvMarker::after { width:1px;height:14px; }
-</style>
+  </style>
 
   <script src="./Utils/trackball-rotator.js"></script>
   <script src="./Utils/m4.js"></script>
@@ -159,154 +179,140 @@ input[type="range"]{accent-color:#d9d9d9}
 
 <body onload="init()">
   <div class="container">
-    
-<div class="header">
-  <h1>Methods of Synthesis of Virtual Reality<br>
-Practical Assignment №1<br>
-WebGL Stereo Camera and Anaglyph Rendering</h1>
-  <h3>Student: Andrii Khavkin<br>
-Group: TR-52mp<br>
-Variant: 18</h3>
-  <div class="badge">
-    <span class="kbd">Mouse drag: rotate model</span>
-    <span class="kbd">T: stereo on/off</span>
-    <span class="kbd">Anaglyph red/cyan</span>
-    <span class="kbd">Wireframe over filled polygons</span>
-  </div>
-</div>
+    <div class="header">
+      <h1>Methods of Synthesis of Virtual Reality<br>
+      Practical Assignment №2<br>
+      Tangible Interface for WebGL Scene Control</h1>
 
+      <h3>Student: Andrii Khavkin<br>
+      Group: TR-52mp<br>
+      Variant: 14 — Hardware Magnetometer / Compass-like Rotation</h3>
+
+      <div class="badge">
+        <span class="kbd">Phone: compass controller</span>
+        <span class="kbd">Variant 14</span>
+        <span class="kbd">Tangible interface</span>
+        <span class="kbd">Local server + HTTPS tunnel</span>
+        <span class="kbd">T: stereo on/off</span>
+        <span class="kbd">M: phone control on/off</span>
+      </div>
+    </div>
 
     <div class="grid">
       <div class="card">
+        <h2>Assignment Overview</h2>
         <p>
-The goal of Practical Assignment №1 is to implement a WebGL-based stereo camera system
-for rendering an analytical surface as an anaglyphic stereo image. The work is based on
-the surface model developed in the previous discipline “Visualization of Graphical and
-Geometric Information”.
-</p>
+          Practical Assignment №2 extends the existing WebGL stereo rendering project with a
+          tangible interface. A smartphone is used as a physical controller for rotating the
+          analytical surface in the virtual scene.
+        </p>
+        <p>
+          According to Variant 14, the input device is based on a hardware magnetometer.
+          The browser provides a processed compass-like orientation value, so the phone
+          controls the model by changing its yaw angle around the vertical axis.
+        </p>
+        <p>
+          The previous rendering pipeline remains unchanged: Sievert's Surface is still
+          rendered with indexed triangles, normal mapping, specular mapping, Phong per-pixel
+          lighting, an animated point light, stereo anaglyph rendering, and wireframe overlay.
+        </p>
 
-<p>
-The application renders the model in negative parallax using two shifted camera frustums:
-one for the left eye and one for the right eye. The left-eye image is written to the red
-channel, while the right-eye image is written to the green and blue channels, forming a
-red-cyan anaglyph image.
-</p>
+        <h3>Connection Scheme</h3>
+        <pre>Smartphone browser
+      ↓ DeviceOrientation / compass heading
+HTTPS tunnel page
+      ↓ POST /sensor
+Local Node.js server
+      ↓ GET /sensor
+WebGL scene on laptop
+      ↓ yaw rotation of the model</pre>
 
-<p>
-The model is displayed as a textured and normal-mapped analytical surface with a wireframe
-mesh rendered on top of filled polygons. This makes it possible to observe both the shaded
-surface and the underlying polygonal structure of the generated parametric mesh.
-</p>
+        <p>
+          The phone controller is opened through an HTTPS tunnel because mobile browsers
+          require a secure context for sensor access. The WebGL scene is opened locally
+          through <b>localhost</b>, which avoids unstable tunnel polling and reduces delay.
+        </p>
 
-<p>
-The stereo camera parameters can be changed interactively:
-<br><b>Eye separation</b> controls the distance between virtual eyes;
-<br><b>Convergence</b> defines the zero-parallax distance;
-<br><b>FOV</b> changes the field of view angle;
-<br><b>Near clip</b> changes the near clipping plane.
-</p>
-
-<p>
-The model can be rotated around its center using the mouse. The implementation also
-prepares the rendering pipeline for displaying a webcam stream in the zero-parallax plane,
-which is required for combining real camera input with the stereo-rendered scene.
-</p>
-
-<p id="message">Drag the mouse over the canvas to rotate the model.</p>
-
-<pre>
-(u', v') = R(θ) · ((u, v) − (u<sub>c</sub>, v<sub>c</sub>)) + (u<sub>c</sub>, v<sub>c</sub>)
-</pre>
-
-<p>
-Keyboard controls allow modifying the texture center:
-<br> <b>W / S</b> — move the texture center up / down
-<br> <b>A / D</b> — move the texture center left / right
-</p>
-
-<p>
-The rotation of the texture is animated over time, demonstrating that the shading 
-and TBN basis correctly respond to dynamic UV transformations. The transformation 
-affects the diffuse, normal, and specular maps simultaneously, producing coherent 
-lighting across all texture channels.
-</p>
-
-<p id="message">Drag your mouse on the cube to rotate it.<br>
-(On a touch screen, you can use your finger.)</p>
+        <h3>Phone Controls</h3>
+        <p>
+          <b>Enable sensors</b> — starts reading phone orientation.<br>
+          <b>Calibrate zero</b> — stores the current direction as the reference angle.<br>
+          <b>Phone rotation</b> — rotates the surface around the vertical axis.
+        </p>
       </div>
 
       <div class="card">
-        <h3>Interactive Controls</h3>
-<ul>
-  <li><b>U segments</b> — resolution along parameter u</li>
-  <li><b>V segments</b> — resolution along parameter v</li>
-  <li><b>Mouse drag</b> — rotate the model around its center</li>
-  <li><b>T</b> — toggle stereo anaglyph / mono rendering</li>
-  <li><b>Eye separation</b> — distance between the virtual cameras</li>
-  <li><b>Convergence</b> — zero-parallax distance</li>
-  <li><b>FOV</b> — vertical field of view angle</li>
-  <li><b>Near clip</b> — near clipping plane distance</li>
-</ul>
+        <h2>Interactive WebGL Scene</h2>
+        <p>
+          The smartphone acts as an external physical controller, while mouse rotation,
+          stereo rendering, anaglyph mode, and rendering parameters remain available.
+        </p>
 
-<p>
-This assignment demonstrates an off-axis stereo camera implementation in WebGL.
-The scene is rendered twice with different projection matrices and color masks,
-producing a red-cyan anaglyph image.
-</p>
+        <ul>
+          <li><b>Smartphone orientation</b> — tangible yaw control of the model</li>
+          <li><b>M</b> — toggle phone-based control</li>
+          <li><b>Mouse drag</b> — manual trackball rotation</li>
+          <li><b>T</b> — toggle stereo anaglyph / mono rendering</li>
+        </ul>
 
-<div style="margin-top: 20px; margin-bottom: 10px;">
-  <label>
-    U segments:
-    <input id="uSegments" type="range" min="5" max="120" value="40">
-    <span id="uSegmentsValue">40</span>
-  </label>
-  <br>
-  <label>
-    V segments:
-    <input id="vSegments" type="range" min="5" max="120" value="40">
-    <span id="vSegmentsValue">40</span>
-  </label>
-</div>
+        <div class="controls-grid">
+          <div>
+            <h3>Surface Resolution</h3>
+            <div class="control-row">
+              <label for="uSegments">U segments</label>
+              <input id="uSegments" type="range" min="5" max="120" value="40">
+              <span id="uSegmentsValue">40</span>
+            </div>
+            <div class="control-row">
+              <label for="vSegments">V segments</label>
+              <input id="vSegments" type="range" min="5" max="120" value="40">
+              <span id="vSegmentsValue">40</span>
+            </div>
+          </div>
 
-<div style="margin-top: 20px; margin-bottom: 10px;">
-  <label>
-    Eye separation:
-    <input id="eyeSeparation" type="range" min="0.01" max="1.00" step="0.01" value="0.20">
-    <span id="eyeSeparationValue">0.20</span>
-  </label>
-  <br>
-  <label>
-    Convergence:
-    <input id="convergence" type="range" min="1.0" max="20.0" step="0.1" value="8.0">
-    <span id="convergenceValue">8.0</span>
-  </label>
-  <br>
-  <label>
-    FOV:
-    <input id="fov" type="range" min="20" max="90" step="1" value="45">
-    <span id="fovValue">45</span>
-  </label>
-  <br>
-  <label>
-    Near clip:
-    <input id="nearClip" type="range" min="0.05" max="5.0" step="0.05" value="0.10">
-    <span id="nearClipValue">0.10</span>
-  </label>
-</div>
+          <div>
+            <h3>Stereo Camera</h3>
+            <div class="control-row">
+              <label for="eyeSeparation">Eye separation</label>
+              <input id="eyeSeparation" type="range" min="0.01" max="1.00" step="0.01" value="0.20">
+              <span id="eyeSeparationValue">0.20</span>
+            </div>
+            <div class="control-row">
+              <label for="convergence">Convergence</label>
+              <input id="convergence" type="range" min="1.0" max="20.0" step="0.1" value="8.0">
+              <span id="convergenceValue">8.0</span>
+            </div>
+            <div class="control-row">
+              <label for="fov">FOV</label>
+              <input id="fov" type="range" min="20" max="90" step="1" value="45">
+              <span id="fovValue">45</span>
+            </div>
+            <div class="control-row">
+              <label for="nearClip">Near clip</label>
+              <input id="nearClip" type="range" min="0.05" max="5.0" step="0.05" value="0.10">
+              <span id="nearClipValue">0.10</span>
+            </div>
+          </div>
+        </div>
 
+        <div class="status-line">
+          <span>Stereo mode: <b id="stereoModeLabel">Anaglyph enabled</b></span>
+          <span>Tangible control: <b id="phoneControlLabel">Phone yaw control enabled</b></span>
+        </div>
 
-<p>
-  Stereo mode:
-  <span id="stereoModeLabel">Anaglyph enabled</span>
-</p>
+        <p class="kbd" style="display:inline-block; margin-bottom:10px;">
+          Rotate the smartphone around the vertical axis to control the surface.
+        </p>
 
-
-
-<div class="canvas-wrap">
-  <canvas width="640" height="640" id="webglcanvas"></canvas>
-  <div id="texCenterMarker" aria-label="Texture center marker"></div>
-</div>
-  
+        <div class="canvas-holder">
+          <div class="canvas-wrap">
+            <canvas width="640" height="640" id="webglcanvas"></canvas>
+            <div id="texCenterMarker" aria-label="Texture center marker"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script src="./ui.js"></script>
 </body>
