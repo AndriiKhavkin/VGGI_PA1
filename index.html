@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>PA#2 Tangible Interface</title>
+  <title>MSVR Calculation Work — Spatial Audio</title>
   <style>
 :root{
   --bg:#0b0c0f;
@@ -135,7 +135,7 @@ input[type="range"]{
   justify-content:center;
   margin-top:12px;
 }
-#webglcanvas{display:block; background:#05060a; max-width:100%; height:auto;}
+#webglcanvas{display:block; background:transparent; max-width:100%; height:auto;}
 #texCenterMarker{
   position:absolute;
   width: 14px;
@@ -146,6 +146,39 @@ input[type="range"]{
   box-shadow: 0 0 0 6px rgba(245,245,245,0.07);
   transform: translate(-50%, -50%);
   pointer-events:none;
+}
+#webcamBg{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  transform: scaleX(-1);
+  opacity:0.75;
+  z-index:0;
+  pointer-events:none;
+}
+#webglcanvas{
+  position:relative;
+  z-index:1;
+  background:transparent;
+}
+#audioSourceMarker{
+  position:absolute;
+  left:50%;
+  top:50%;
+  width:18px;
+  height:18px;
+  border-radius:999px;
+  border:2px solid rgba(255,210,80,0.95);
+  background:rgba(255,160,40,0.45);
+  box-shadow:0 0 16px rgba(255,190,60,0.85);
+  transform:translate(-50%, -50%);
+  z-index:3;
+  pointer-events:none;
+}
+#texCenterMarker{
+  z-index:2;
 }
 #texCenterMarker::before{
   content:"";
@@ -174,6 +207,7 @@ input[type="range"]{
   <script src="model.js"></script>
   <script src="./shader.gpu"></script>
   <script src="TextureHandler.js"></script>
+  <script src="spatialAudio.js"></script>
   <script src="main.js"></script>
 </head>
 
@@ -181,12 +215,12 @@ input[type="range"]{
   <div class="container">
     <div class="header">
       <h1>Methods of Synthesis of Virtual Reality<br>
-      Practical Assignment №2<br>
-      Tangible Interface for WebGL Scene Control</h1>
+      Calculation Work / Practical Assignment №3<br>
+      Spatial Audio for WebGL Scene</h1>
 
       <h3>Student: Andrii Khavkin<br>
       Group: TR-52mp<br>
-      Variant: 14 — Hardware Magnetometer / Compass-like Rotation</h3>
+      Variant: 14 — Low-frequency Shelf Filter</h3>
 
       <div class="badge">
         <span class="kbd">Phone: compass controller</span>
@@ -195,6 +229,9 @@ input[type="range"]{
         <span class="kbd">Local server + HTTPS tunnel</span>
         <span class="kbd">T: stereo on/off</span>
         <span class="kbd">M: phone control on/off</span>
+        <span class="kbd">Spatial audio</span>
+        <span class="kbd">Low-shelf filter</span>
+        <span class="kbd">Web Audio API</span>
       </div>
     </div>
 
@@ -293,20 +330,65 @@ WebGL scene on laptop
               <span id="nearClipValue">0.10</span>
             </div>
           </div>
+
+
+          <div>
+            <h3>Spatial Audio — Variant 14</h3>
+
+            <div class="control-row">
+              <label for="lowShelfEnabled">Filter</label>
+              <input id="lowShelfEnabled" type="checkbox" checked>
+              <span>on</span>
+            </div>
+
+            <div class="control-row">
+              <label for="lowShelfFrequency">Shelf freq</label>
+              <input id="lowShelfFrequency" type="range" min="80" max="1200" step="10" value="320">
+              <span id="lowShelfFrequencyValue">320</span>
+            </div>
+
+            <div class="control-row">
+              <label for="lowShelfGain">Bass gain</label>
+              <input id="lowShelfGain" type="range" min="-24" max="24" step="0.5" value="8">
+              <span id="lowShelfGainValue">8.0</span>
+            </div>
+
+            <div class="control-row">
+              <label for="audioVolume">Volume</label>
+              <input id="audioVolume" type="range" min="0.00" max="0.20" step="0.01" value="0.08">
+              <span id="audioVolumeValue">0.65</span>
+            </div>
+
+            <button id="audioPlayButton" class="kbd" style="cursor:pointer;">
+              ▶ Play spatial audio
+            </button>
+
+            <button id="webcamButton" class="kbd" style="cursor:pointer;">
+              Start webcam background
+            </button>
+          </div>
         </div>
 
         <div class="status-line">
           <span>Stereo mode: <b id="stereoModeLabel">Anaglyph enabled</b></span>
           <span>Tangible control: <b id="phoneControlLabel">Phone yaw control enabled</b></span>
+          <span>Spatial audio: <b id="audioStatusLabel">disabled</b></span>
+          <span>Webcam: <b id="webcamStatusLabel">disabled</b></span>
         </div>
 
-        <p class="kbd" style="display:inline-block; margin-bottom:10px;">
+        <div class="status-line">
+          <span>Sound source: <b id="audioPositionLabel">x=0.00, y=0.00, z=0.00</b></span>
+        </div>
+
+        <!-- <p class="kbd" style="display:inline-block; margin-bottom:10px;">
           Rotate the smartphone around the vertical axis to control the surface.
-        </p>
+        </p> -->
 
         <div class="canvas-holder">
           <div class="canvas-wrap">
+            <video id="webcamBg" autoplay playsinline muted></video>
             <canvas width="640" height="640" id="webglcanvas"></canvas>
+            <div id="audioSourceMarker" aria-label="Spatial audio source marker"></div>
             <div id="texCenterMarker" aria-label="Texture center marker"></div>
           </div>
         </div>

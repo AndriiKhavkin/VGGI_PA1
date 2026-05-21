@@ -26,7 +26,7 @@ const server = http.createServer((req, res) => {
     res.setHeader("Access-Control-Allow-Headers", "Content-Type");
     res.setHeader(
         "Permissions-Policy",
-        "accelerometer=*, gyroscope=*, magnetometer=*"
+        "camera=*, microphone=*, accelerometer=*, gyroscope=*, magnetometer=*"
     );
 
     if (req.method === "OPTIONS") {
@@ -98,7 +98,10 @@ const server = http.createServer((req, res) => {
         ".css": "text/css",
         ".gpu": "application/javascript",
         ".jpg": "image/jpeg",
-        ".png": "image/png"
+        ".png": "image/png",
+        ".mp3": "audio/mpeg",
+        ".ogg": "audio/ogg",
+        ".wav": "audio/wav"
     };
 
     fs.readFile(filePath, (err, content) => {

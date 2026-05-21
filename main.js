@@ -25,6 +25,20 @@ let anaglyphEnabled = true;
 
 let wireProgram = null; // MSVR #1
 
+// MSVR PA#3 / CGW — Spatial Audio
+let audioEngine = null;
+
+let audioAzimuth = 0.6;
+let audioElevation = 0.15;
+const AUDIO_ORBIT_RADIUS = 2.2;
+
+let audioDragging = false;
+let lastAudioMouseX = 0;
+let lastAudioMouseY = 0;
+const AUDIO_DRAG_SPEED = 0.01;
+
+let webcamStream = null;
+
 // MSVR 2
 let phoneControlEnabled = true;
 let phoneYaw = 0.0;          // filtered target yaw
@@ -240,6 +254,120 @@ function drawWireframeWithMatrices(projectionMatrix, modelViewMatrix) {
 
     shProgram.Use();
 }
+//CGW
+
+function clamp(value, minValue, maxValue) {
+    return Math.max(minValue, Math.min(maxValue, value));
+}
+
+function updateSpatialAudioSource() {
+    if (!audioEngine) return;
+
+    const x = AUDIO_ORBIT_RADIUS * Math.sin(audioAzimuth) * Math.cos(audioElevation);
+    const y = AUDIO_ORBIT_RADIUS * Math.sin(audioElevation);
+    const z = AUDIO_ORBIT_RADIUS * Math.cos(audioAzimuth) * Math.cos(audioElevation);
+
+    audioEngine.setSourcePosition(x, y, z);
+
+    const label = document.getElementById("audioPositionLabel");
+    if (label) {
+        label.textContent = `x=${x.toFixed(2)}, y=${y.toFixed(2)}, z=${z.toFixed(2)}`;
+    }
+
+    const marker = document.getElementById("audioSourceMarker");
+    if (marker) {
+        const screenX = 50 + 32 * Math.sin(audioAzimuth) * Math.cos(audioElevation);
+        const screenY = 50 - 32 * Math.sin(audioElevation);
+
+        marker.style.left = `${screenX}%`;
+        marker.style.top = `${screenY}%`;
+
+        const depthScale = 0.75 + 0.35 * ((Math.cos(audioAzimuth) + 1.0) * 0.5);
+        marker.style.transform = `translate(-50%, -50%) scale(${depthScale.toFixed(2)})`;
+    }
+}
+
+function onAudioMouseDown(e) {
+    audioDragging = true;
+    lastAudioMouseX = e.clientX;
+    lastAudioMouseY = e.clientY;
+}
+
+function onAudioMouseMove(e) {
+    if (!audioDragging) return;
+
+    audioAzimuth += (e.clientX - lastAudioMouseX) * AUDIO_DRAG_SPEED;
+    audioElevation = clamp(
+        audioElevation - (e.clientY - lastAudioMouseY) * AUDIO_DRAG_SPEED,
+        -Math.PI / 3.0,
+        Math.PI / 3.0
+    );
+
+    lastAudioMouseX = e.clientX;
+    lastAudioMouseY = e.clientY;
+}
+
+function onAudioMouseUp() {
+    audioDragging = false;
+}
+
+function initSpatialAudioUI(canvas) {
+    audioEngine = new AudioEngine(AUDIO_ORBIT_RADIUS);
+
+    const playBtn = document.getElementById("audioPlayButton");
+    const filterEnabled = document.getElementById("lowShelfEnabled");
+    const freqSlider = document.getElementById("lowShelfFrequency");
+    const gainSlider = document.getElementById("lowShelfGain");
+    const volumeSlider = document.getElementById("audioVolume");
+
+    const freqValue = document.getElementById("lowShelfFrequencyValue");
+    const gainValue = document.getElementById("lowShelfGainValue");
+    const volumeValue = document.getElementById("audioVolumeValue");
+    const statusLabel = document.getElementById("audioStatusLabel");
+
+    function updateFilterUI() {
+        const freq = parseFloat(freqSlider.value);
+        const gain = parseFloat(gainSlider.value);
+        const volume = parseFloat(volumeSlider.value);
+        const enabled = filterEnabled.checked;
+
+        if (freqValue) freqValue.textContent = freq.toFixed(0);
+        if (gainValue) gainValue.textContent = gain.toFixed(1);
+        if (volumeValue) volumeValue.textContent = volume.toFixed(2);
+
+        audioEngine.setFilterEnabled(enabled);
+        audioEngine.setFilterFrequency(freq);
+        audioEngine.setFilterGain(gain);
+        audioEngine.setVolume(volume);
+    }
+
+    if (playBtn) {
+        playBtn.addEventListener("click", async function () {
+            if (audioEngine.isPlaying()) {
+                audioEngine.pause();
+                playBtn.textContent = "▶ Play spatial audio";
+                if (statusLabel) statusLabel.textContent = "disabled";
+            } else {
+                await audioEngine.play();
+                playBtn.textContent = "⏸ Pause spatial audio";
+                if (statusLabel) statusLabel.textContent = "enabled";
+            }
+
+            updateFilterUI();
+        });
+    }
+
+    if (filterEnabled) filterEnabled.addEventListener("change", updateFilterUI);
+    if (freqSlider) freqSlider.addEventListener("input", updateFilterUI);
+    if (gainSlider) gainSlider.addEventListener("input", updateFilterUI);
+    if (volumeSlider) volumeSlider.addEventListener("input", updateFilterUI);
+
+    updateFilterUI();
+
+    canvas.addEventListener("mousedown", onAudioMouseDown);
+    window.addEventListener("mousemove", onAudioMouseMove);
+    window.addEventListener("mouseup", onAudioMouseUp);
+}
 
 
 /* Draws a colored cube, along with a set of coordinate axes.
@@ -253,6 +381,8 @@ function draw() {
     stereoCamera.setAspectRatio(aspect);
 
     const baseViewMatrix = getBaseViewMatrix();
+
+    updateSpatialAudioSource();
 
     if (!anaglyphEnabled) {
         const projection = m4.perspective(
@@ -363,7 +493,7 @@ function initGL() {
     surface.idTextureNormal   = LoadTexture("textures/normal.jpg"); // NEW
  
     gl.enable(gl.DEPTH_TEST);
-    gl.clearColor(0.02, 0.03, 0.06, 1.0);
+    gl.clearColor(0.02, 0.03, 0.06, 0.0);
 
     // привʼязка слайсерів
     gl.uniform1i(shProgram.iSamplerDiffuse,  0);
@@ -573,6 +703,93 @@ class StereoCamera {
     }
 }
 
+//CGW
+
+async function startWebcamBackground() {
+    const video = document.getElementById("webcamBg");
+    const status = document.getElementById("webcamStatusLabel");
+    const btn = document.getElementById("webcamButton");
+
+    if (!video) return;
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        if (status) status.textContent = "getUserMedia unavailable";
+        console.warn("navigator.mediaDevices.getUserMedia is unavailable. Open the page via http://localhost:8080/");
+        return;
+    }
+
+    try {
+        if (webcamStream) {
+            webcamStream.getTracks().forEach(track => track.stop());
+            webcamStream = null;
+        }
+
+        const constraintsList = [
+            {
+                video: {
+                    facingMode: "user",
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                },
+                audio: false
+            },
+            {
+                video: true,
+                audio: false
+            }
+        ];
+
+        let lastError = null;
+
+        for (const constraints of constraintsList) {
+            try {
+                webcamStream = await navigator.mediaDevices.getUserMedia(constraints);
+                break;
+            } catch (err) {
+                lastError = err;
+                console.warn("Webcam constraints failed:", constraints, err.name, err.message);
+            }
+        }
+
+        if (!webcamStream) {
+            throw lastError || new Error("Camera stream was not created");
+        }
+
+        video.srcObject = webcamStream;
+        video.muted = true;
+        video.playsInline = true;
+
+        await video.play();
+
+        if (status) status.textContent = "enabled";
+        if (btn) btn.textContent = "Restart webcam background";
+
+        console.log("Webcam background enabled:", webcamStream.getVideoTracks()[0]?.label || "camera");
+    } catch (err) {
+        console.warn("Webcam background error:", err);
+
+        if (status) {
+            status.textContent = err && err.name ? err.name : "unavailable";
+        }
+
+        alert(
+            "Webcam error: " +
+            (err && err.name ? err.name : "UnknownError") +
+            "\n\n" +
+            (err && err.message ? err.message : "No additional message") +
+            "\n\nTry: open via http://localhost:8080/, allow camera permission, close Zoom/OBS/Telegram camera."
+        );
+    }
+}
+
+function initWebcamUI() {
+    const btn = document.getElementById("webcamButton");
+
+    if (btn) {
+        btn.addEventListener("click", startWebcamBackground);
+    }
+}
+
 
 /**
  * initialization function that will be called when the page has loaded
@@ -581,7 +798,10 @@ function init() {
     let canvas;
     try {
         canvas = document.getElementById("webglcanvas");
-        gl = canvas.getContext("webgl");
+        gl = canvas.getContext("webgl", {
+            alpha: true,
+            premultipliedAlpha: false
+        });
         if (!gl) {
             throw "Browser does not support WebGL";
         }
@@ -682,6 +902,9 @@ function init() {
     }
 
     initPhonePolling();
+
+    initSpatialAudioUI(canvas);
+    initWebcamUI();
 
     // Стартова відмальовка + анімація світла
     draw();
