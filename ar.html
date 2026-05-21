@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+
+  <title>MSVR Control Task — AR Registration Template</title>
+
+  <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.3.2/aframe/build/aframe-ar.js"></script>
+  <script src="./ar-sievert.js"></script>
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #000;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    #hud {
+      position: fixed;
+      left: 8px;
+      top: 8px;
+      z-index: 9999;
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: rgba(8, 10, 16, 0.72);
+      color: #f2f2f2;
+      font-size: 11px;
+      line-height: 1.35;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      pointer-events: none;
+    }
+
+    #markerState {
+      font-weight: 700;
+      color: #ffd45c;
+    }
+
+    video,
+    #arjs-video {
+    z-index: 0 !important;
+    }
+
+    canvas,
+    .a-canvas {
+    z-index: 2 !important;
+    background: transparent !important;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="hud">
+    <div><b>MSVR Control Task — AR registration template</b></div>
+    <div>Marker state: <span id="markerState">searching...</span></div>
+    <div>Model: Sievert's Surface from PA#1</div>
+  </div>
+
+  <a-scene
+    embedded
+    vr-mode-ui="enabled: false"
+    renderer="antialias: true; alpha: true;"
+    arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono;">
+
+    <a-marker
+        id="registrationMarker"
+        type="pattern"
+        url="./markers/pattern-marker.patt"
+        emitevents="true">
+
+      <a-entity
+        id="sievertSurfaceAR"
+        sievert-surface="uSegments: 48; vSegments: 48; scale: 0.8; wireframe: true"
+        position="0 0.08 0"
+        rotation="0 0 0">
+    </a-entity>
+
+    </a-marker>
+
+    <a-entity camera></a-entity>
+  </a-scene>
+
+  <script>
+    const marker = document.getElementById("registrationMarker");
+    const markerState = document.getElementById("markerState");
+
+    marker.addEventListener("markerFound", () => {
+      markerState.textContent = "found";
+      markerState.style.color = "#79ff9b";
+    });
+
+    marker.addEventListener("markerLost", () => {
+      markerState.textContent = "searching...";
+      markerState.style.color = "#ffd45c";
+    });
+  </script>
+
+  <script>
+    const scene = document.querySelector("a-scene");
+
+    scene.addEventListener("loaded", () => {
+        if (scene.renderer) {
+        scene.renderer.setClearColor(0x000000, 0);
+        scene.renderer.autoClear = true;
+        }
+
+        const canvas = document.querySelector("canvas, .a-canvas");
+        if (canvas) {
+        canvas.style.background = "transparent";
+        canvas.style.zIndex = "2";
+        }
+
+        const video = document.querySelector("#arjs-video, video");
+        if (video) {
+        video.style.zIndex = "0";
+        }
+    });
+    </script>
+</body>
+</html>

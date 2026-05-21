@@ -101,7 +101,9 @@ const server = http.createServer((req, res) => {
         ".png": "image/png",
         ".mp3": "audio/mpeg",
         ".ogg": "audio/ogg",
-        ".wav": "audio/wav"
+        ".wav": "audio/wav",
+        ".patt": "text/plain",
+        ".svg": "image/svg+xml"
     };
 
     fs.readFile(filePath, (err, content) => {
